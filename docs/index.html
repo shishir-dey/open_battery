@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generic Chinese BMS BLE Protocol</title>
+
+    <!-- SEO and Metadata -->
+    <meta name="author" content="Shishir Dey">
+    <meta name="description"
+        content="Comprehensive specification for the binary Master-Slave BLE protocol used by Chinese BMS vendors like Jiabaida (JBD), Xiaoxiang, Daly, and JK BMS.">
+    <meta name="keywords"
+        content="BMS, Bluetooth Low Energy, Protocol, Specification, Jiabaida BMS, JBD, Xiaoxiang, Daly BMS, JK BMS, ANT BMS, Chinese BMS, Open Source, Shishir Dey">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="BMS Bluetooth Low Energy Protocol Specification">
+    <meta property="og:description" content="Technical documentation for the BMS BLE binary protocol.">
+    <meta property="og:type" content="article">
+    <meta property="article:author" content="Shishir Dey">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "BMS Bluetooth Low Energy Protocol Specification",
+      "author": {
+        "@type": "Person",
+        "name": "Shishir Dey"
+      },
+      "description": "Comprehensive specification for the binary Master-Slave BLE protocol used by Chinese BMS vendors including Jiabaida (JBD).",
+      "keywords": "BMS, BLE, Protocol, Jiabaida BMS, JBD, Xiaoxiang, Daly, JK BMS"
+    }
+    </script>
+    <style>
+        :root {
+            /* Default Dark Mode */
+            --glass-bg: rgba(30, 30, 40, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-highlight: rgba(255, 255, 255, 0.05);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent: #2997ff;
+            /* iOS Blue */
+            --accent-glow: rgba(41, 151, 255, 0.3);
+            --success: #30d158;
+            --warning: #ffd60a;
+            --code-bg: rgba(0, 0, 0, 0.3);
+            --bg-base: #000;
+        }
+
+        [data-theme="light"] {
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --glass-highlight: rgba(255, 255, 255, 0.4);
+            --text-primary: #1d1d1f;
+            --text-secondary: #515154;
+            --accent: #0071e3;
+            --accent-glow: rgba(0, 113, 227, 0.2);
+            --code-bg: rgba(245, 245, 247, 0.8);
+            --bg-base: #f5f5f7;
+            --success: #34c759;
+            --warning: #ffcc00;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Abstract futuristic background */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(41, 151, 255, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 45, 85, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(94, 92, 230, 0.1) 0%, transparent 60%);
+            z-index: -1;
+            transition: opacity 0.3s ease;
+        }
+
+        [data-theme="light"] body::before {
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(0, 113, 227, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 59, 48, 0.1) 0%, transparent 40%);
+        }
+
+        /* Glass Container */
+        .glass-container {
+            position: relative;
+            max-width: 900px;
+            margin: 60px auto;
+            padding: 50px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            box-shadow:
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 var(--glass-highlight);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.2em;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            /* text-shadow: 0 10px 30px rgba(255, 255, 255, 0.1); */
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-top: 2em;
+            margin-bottom: 1em;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 0.5em;
+            color: var(--accent);
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            margin-top: 1.5em;
+            color: var(--text-primary);
+            opacity: 0.9;
+        }
+
+        p,
+        li {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        /* Links */
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--accent);
+            text-decoration: none;
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Tables - Glass Style */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 16px;
+            margin: 20px 0;
+            border: 1px solid var(--glass-border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--glass-highlight);
+        }
+
+        th,
+        td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+        }
+
+        th {
+            background: rgba(41, 151, 255, 0.05);
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        [data-theme="light"] th {
+            background: rgba(0, 113, 227, 0.05);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: var(--glass-highlight);
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--code-bg);
+            padding: 24px;
+            border-radius: 18px;
+            overflow-x: auto;
+            border: 1px solid var(--glass-border);
+            font-family: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        code {
+            font-family: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+            background: var(--glass-highlight);
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: var(--accent);
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Mermaid Diagrams */
+        .mermaid {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 16px;
+            margin: 30px 0;
+            overflow-x: auto;
+            text-align: center;
+        }
+
+        [data-theme="light"] .mermaid {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid var(--glass-border);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Toggle Switch */
+        .theme-switch-wrapper {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            background: var(--glass-bg);
+            padding: 8px 12px;
+            border-radius: 50px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .theme-switch {
+            display: inline-block;
+            height: 24px;
+            position: relative;
+            width: 44px;
+        }
+
+        .theme-switch input {
+            display: none;
+        }
+
+        .slider {
+            background-color: #3a3a3c;
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            background-color: #fff;
+            bottom: 2px;
+            content: "";
+            height: 20px;
+            left: 2px;
+            position: absolute;
+            transition: .4s;
+            width: 20px;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .icon {
+            font-size: 16px;
+            margin: 0 8px;
+            color: var(--text-secondary);
+        }
+
+        /* Utilities */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+            background: var(--accent);
+            color: white;
+            margin-right: 8px;
+        }
+    </style>
+    <!-- Mermaid Diagram Support -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        // Initialize based on theme
+        const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'default' : 'dark';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: theme,
+            themeVariables: { fontFamily: 'SF Pro Display' }
+        });
+    </script>
+</head>
+
+<body>
+
+    <div class="glass-container">
+        <div class="theme-switch-wrapper">
+            <span class="icon">🌙</span>
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
+                <div class="slider round"></div>
+            </label>
+            <span class="icon">☀️</span>
+        </div>
+
+        <h1>Generic Chinese BMS BLE Protocol<span
+                style="font-size: 0.4em; vertical-align: middle; opacity: 0.5; border:1px solid var(--glass-border); border-radius: 8px; padding: 4px 8px; margin-left: 10px; -webkit-text-fill-color: var(--text-secondary);">v1.0</span>
+        </h1>
+
+        <p>
+            <strong>Protocol Type:</strong> Binary, Master-Slave<br>
+            <strong>Transport:</strong> Bluetooth Low Energy (BLE)
+        </p>
+
+        <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 30px 0;">
+
+        <h2>Table of Contents</h2>
+        <ol>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#ble-service-specification">BLE Service Specification</a></li>
+            <li><a href="#packet-structure">Packet Structure</a></li>
+            <li><a href="#communication-flow">Communication Flow</a></li>
+            <li><a href="#command-set">Command Set</a></li>
+            <li><a href="#data-types-and-encoding">Data Types and Encoding</a></li>
+            <li><a href="#state-machine">State Machine</a></li>
+            <li><a href="#error-handling">Error Handling</a></li>
+            <li><a href="#implementation-guidelines">Implementation Guidelines</a></li>
+        </ol>
+
+        <h2 id="overview">1. Overview</h2>
+        <p>This protocol enables communication between a client device and a Battery Management System (BMS) over
+            Bluetooth Low Energy. It supports real-time monitoring of battery pack parameters including voltage,
+            current, temperature, and protection states.</p>
+
+        <h3>Key Features</h3>
+        <ul>
+            <li>Binary command-response protocol</li>
+            <li>CRC-based data integrity</li>
+            <li>Asynchronous notification support</li>
+            <li>Multi-cell voltage monitoring</li>
+            <li>Temperature sensor array support</li>
+            <li>State-based recording triggers</li>
+        </ul>
+
+        <h2 id="ble-service-specification">2. BLE Service Specification</h2>
+
+        <h3>GATT Profile</h3>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>UUID</th>
+                        <th>Properties</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Service</td>
+                        <td><code>0000ff00-0000-1000-8000-00805f9b34fb</code></td>
+                        <td>Primary Service</td>
+                    </tr>
+                    <tr>
+                        <td>R/W Characteristic</td>
+                        <td><code>0000ff02-0000-1000-8000-00805f9b34fb</code></td>
+                        <td>Read, Write, Notify</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Connection Parameters</h3>
+        <ul>
+            <li><strong>MTU</strong>: Minimum 23 bytes (default BLE)</li>
+            <li><strong>Connection Interval</strong>: Recommended 7.5-15ms for optimal throughput</li>
+            <li><strong>Supervision Timeout</strong>: 5000ms</li>
+            <li><strong>Enable Notifications</strong>: Required for receiving responses</li>
+        </ul>
+
+        <h2 id="packet-structure">3. Packet Structure</h2>
+
+        <h3>Request Packet Format</h3>
+        <pre>
+┌─────────┬─────────┬──────┬────────┬──────────┬─────────────┬─────────────┬─────────┐
+│ Header  │ Command │ Mode │ Length │   Data   │ Checksum_H  │ Checksum_L  │  Tail   │
+├─────────┼─────────┼──────┼────────┼──────────┼─────────────┼─────────────┼─────────┤
+│  0xDD   │ 1 byte  │0xA5  │1 byte  │ N bytes  │   1 byte    │   1 byte    │  0x77   │
+└─────────┴─────────┴──────┴────────┴──────────┴─────────────┴─────────────┴─────────┘
+   Byte 0    Byte 1  Byte 2  Byte 3  Bytes 4-N    Byte N+4      Byte N+5     Byte N+6
+
+Total Length = Data Length + 7 bytes</pre>
+
+        <h3>Response Packet Format</h3>
+        <pre>
+┌─────────┬─────────┬────────┬────────┬──────────┬─────────────┬─────────────┬─────────┐
+│ Header  │Response │ Status │ Length │   Data   │ Checksum_H  │ Checksum_L  │  Tail   │
+├─────────┼─────────┼────────┼────────┼──────────┼─────────────┼─────────────┼─────────┤
+│  0xDD   │ 1 byte  │ 1 byte │1 byte  │ N bytes  │   1 byte    │   1 byte    │  0x77   │
+└─────────┴─────────┴────────┴────────┴──────────┴─────────────┴─────────────┴─────────┘
+   Byte 0    Byte 1   Byte 2  Byte 3  Bytes 4-N    Byte N+4      Byte N+5     Byte N+6</pre>
+
+        <h3>Field Descriptions</h3>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Size</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Header</td>
+                        <td>1 byte</td>
+                        <td>Fixed value <code>0xDD</code> - packet start marker</td>
+                    </tr>
+                    <tr>
+                        <td>Command</td>
+                        <td>1 byte</td>
+                        <td>Command identifier</td>
+                    </tr>
+                    <tr>
+                        <td>Mode</td>
+                        <td>1 byte</td>
+                        <td><code>0xA5</code> for read operations</td>
+                    </tr>
+                    <tr>
+                        <td>Status</td>
+                        <td>1 byte</td>
+                        <td>Response status code (0x00 = success)</td>
+                    </tr>
+                    <tr>
+                        <td>Length</td>
+                        <td>1 byte</td>
+                        <td>Number of data bytes (0-255)</td>
+                    </tr>
+                    <tr>
+                        <td>Data</td>
+                        <td>N bytes</td>
+                        <td>Command-specific payload</td>
+                    </tr>
+                    <tr>
+                        <td>Checksum_H</td>
+                        <td>1 byte</td>
+                        <td>High byte of 16-bit CRC</td>
+                    </tr>
+                    <tr>
+                        <td>Checksum_L</td>
+                        <td>1 byte</td>
+                        <td>Low byte of 16-bit CRC</td>
+                    </tr>
+                    <tr>
+                        <td>Tail</td>
+                        <td>1 byte</td>
+                        <td>Fixed value <code>0x77</code> - packet end marker</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 id="communication-flow">4. Communication Flow</h2>
+
+        <h3>Basic Request-Response</h3>
+        <pre>
+Client                                    BMS Device
+  |                                            |
+  |-- Write Request Packet ------------------>|
+  |                                            |
+  |                                            |-- Process Command
+  |                                            |
+  |<-- Notify Response Packet ----------------|
+  |                                            |
+    </pre>
+
+        <h3>Timing Constraints</h3>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Value</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Command Timeout</td>
+                        <td>2000ms</td>
+                        <td>Maximum wait time for response</td>
+                    </tr>
+                    <tr>
+                        <td>Retry Interval</td>
+                        <td>50ms</td>
+                        <td>Polling interval for command queue</td>
+                    </tr>
+                    <tr>
+                        <td>Read Timeout</td>
+                        <td>5000ms</td>
+                        <td>Maximum read operation duration</td>
+                    </tr>
+                    <tr>
+                        <td>Recording Interval</td>
+                        <td>1000ms</td>
+                        <td>Data collection frequency</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 id="command-set">5. Command Set</h2>
+
+        <h3>0x03 - Read Base Information</h3>
+        <p><strong>Request:</strong> <code>DD 03 A5 00 ...</code></p>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Offset</th>
+                        <th>Size</th>
+                        <th>Field</th>
+                        <th>Type</th>
+                        <th>Unit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>0-1</td>
+                        <td>2</td>
+                        <td>Total Voltage</td>
+                        <td>uint16</td>
+                        <td>0.1V</td>
+                    </tr>
+                    <tr>
+                        <td>2-3</td>
+                        <td>2</td>
+                        <td>Current</td>
+                        <td>int16</td>
+                        <td>0.1A (signed)</td>
+                    </tr>
+                    <tr>
+                        <td>4-5</td>
+                        <td>2</td>
+                        <td>Remaining Capacity</td>
+                        <td>uint16</td>
+                        <td>0.01Ah</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>1</td>
+                        <td>Temperature Count (N)</td>
+                        <td>uint8</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>7-N</td>
+                        <td>N</td>
+                        <td>Temperature Array</td>
+                        <td>int8[]</td>
+                        <td>1°C (signed, offset -40)</td>
+                    </tr>
+                    <tr>
+                        <td>N+1</td>
+                        <td>1</td>
+                        <td>RSOC</td>
+                        <td>uint8</td>
+                        <td>1%</td>
+                    </tr>
+                    <tr>
+                        <td>N+2</td>
+                        <td>1</td>
+                        <td>MOS Status</td>
+                        <td>uint8</td>
+                        <td>Bit 0: Charge, Bit 1: Discharge</td>
+                    </tr>
+                    <tr>
+                        <td>N+3-4</td>
+                        <td>2</td>
+                        <td>Protection State</td>
+                        <td>uint16</td>
+                        <td>Bit flags</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>0x04 - Read Cell Voltages</h3>
+        <p><strong>Request:</strong> <code>DD 04 A5 00 ...</code></p>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Offset</th>
+                        <th>Size</th>
+                        <th>Field</th>
+                        <th>Type</th>
+                        <th>Unit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>0</td>
+                        <td>1</td>
+                        <td>Cell Count (N)</td>
+                        <td>uint8</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>1-2N</td>
+                        <td>2N</td>
+                        <td>Cell Voltage Array</td>
+                        <td>uint16[]</td>
+                        <td>1mV per cell</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 id="data-types-and-encoding">6. Data Types and Encoding</h2>
+
+        <p>All multi-byte integers use <strong>Big-Endian</strong> (most significant byte first) encoding.</p>
+
+        <h3>Checksum Algorithm</h3>
+        <pre>
+def calculate_checksum(command: int, data: bytes) -&gt; tuple[int, int]:
+    """
+    Calculate 16-bit checksum
+    Returns: (high_byte, low_byte)
+    """
+    checksum = command
+    for byte in data:
+        checksum += byte
+    
+    # Apply modulo and split into bytes
+    checksum = checksum % 65536
+    high_byte = (checksum &gt;&gt; 8) & 0xFF
+    low_byte = checksum & 0xFF
+    
+    return (high_byte, low_byte)
+</pre>
+
+        <h2 id="state-machine">7. State Machine</h2>
+
+        <div class="mermaid">
+            stateDiagram-v2
+                [*] --> STATIC
+
+                STATIC --> PRE_CHARGE: "Current > 0"
+                STATIC --> PRE_DISCHARGE: "Current < 0"
+                
+                PRE_CHARGE --> CHARGE: "Sustained current"
+                CHARGE --> BEFORE_CHG_STOP: "Voltage peak detected"
+                BEFORE_CHG_STOP --> AFTER_CHARGE: "Current stops"
+                AFTER_CHARGE --> STATIC: "Stabilized"
+
+                PRE_DISCHARGE --> DISCHARGE: "Sustained current"
+                DISCHARGE --> STOP_DISCHARGE: "Current stops"
+                STOP_DISCHARGE --> AFTER_DISCHARGE: "Confirmed stop"
+                AFTER_DISCHARGE --> STATIC: "Stabilized"
+
+                STATIC --> OVERTEMP: "Temp > 60C"
+                CHARGE --> TEMP_UNEXPECTED: "DeltaTemp > 5C"
+                DISCHARGE --> TEMP_UNEXPECTED: "DeltaTemp > 5C"
+        </div>
+
+        <h2 id="error-handling">8. Error Handling</h2>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>0x00</td>
+                        <td>SUCCESS</td>
+                        <td>Command executed successfully</td>
+                    </tr>
+                    <tr>
+                        <td>0xFF</td>
+                        <td>CHECKSUM_ERROR</td>
+                        <td>Checksum validation failed</td>
+                    </tr>
+                    <tr>
+                        <td>0xFE</td>
+                        <td>TIMEOUT</td>
+                        <td>No response within timeout</td>
+                    </tr>
+                    <tr>
+                        <td>0xFD</td>
+                        <td>INVALID_COMMAND</td>
+                        <td>Unknown command byte</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 id="implementation-guidelines">9. Implementation Guidelines</h2>
+
+        <h3>Internal Resistance Calculation</h3>
+        <p>When RSOC is between 45-90% during discharge transition:</p>
+        <pre>
+For each cell i:
+    R[i] = (V_pre[i] - V_post[i]) / |I_discharge|
+
+Where:
+    V_pre[i]  = Cell voltage before discharge (PRE_DISCHARGE state)
+    V_post[i] = Cell voltage after discharge starts (DISCHARGE state)
+    I_discharge = Discharge current</pre>
+
+        <h3>Sample Implementation</h3>
+        <pre>
+class BMSProtocol:
+    HEADER = 0xDD
+    TAIL = 0x77
+    MODE_READ = 0xA5
+    
+    def parse_base_info(self, data: bytes) -> dict:
+        """Parse base information response"""
+        voltage = int.from_bytes(data[0:2], 'big') / 10.0  # 0.1V units
+        current = int.from_bytes(data[2:4], 'big', signed=True) / 10.0  # 0.1A
+        capacity = int.from_bytes(data[4:6], 'big') / 100.0  # 0.01Ah
+        temp_count = data[6]
+        
+        temperatures = []
+        for i in range(temp_count):
+            temp_raw = data[7 + i]
+            temperatures.append(temp_raw - 40)  # Offset by 40°C
+        
+        return {
+            'voltage': voltage,
+            'current': current,
+            'capacity': capacity,
+            'temperatures': temperatures
+        }</pre>
+
+    </div>
+
+    <script>
+        const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme) {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            if (currentTheme === 'light') {
+                toggleSwitch.checked = true;
+            }
+        }
+
+        function switchTheme(e) {
+            if (e.target.checked) {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        toggleSwitch.addEventListener('change', switchTheme, false);
+    </script>
+
+</body>
+
+</html>
