@@ -395,9 +395,11 @@
         <h2>Table of Contents</h2>
         <ol>
             <li><a href="#overview">Overview</a></li>
+            <li><a href="#authentication">Authentication</a></li> <!-- Added -->
             <li><a href="#ble-service-specification">BLE Service Specification</a></li>
             <li><a href="#packet-structure">Packet Structure</a></li>
             <li><a href="#communication-flow">Communication Flow</a></li>
+
             <li><a href="#command-set">Command Set</a></li>
             <li><a href="#data-types-and-encoding">Data Types and Encoding</a></li>
             <li><a href="#state-machine">State Machine</a></li>
@@ -418,7 +420,34 @@
             <li>Multi-cell voltage monitoring</li>
             <li>Temperature sensor array support</li>
             <li>State-based recording triggers</li>
+            <li><strong>Challenge-Response Authentication</strong></li>
         </ul>
+
+        <h2 id="authentication">1.1 Authentication</h2>
+        <p>Before standard commands (0xDD) are accepted, a handshake must be performed using Auth Packets (0xFF).</p>
+
+        <div class="mermaid">
+            sequenceDiagram
+            participant Client
+            participant BMS
+
+            Client->>BMS: Send App Key (0x15: "000000")
+            BMS-->>Client: Response (0x00: OK, Pwd Required)
+
+            Client->>BMS: Request Random (0x17)
+            BMS-->>Client: Random Byte (e.g. 0xA3)
+
+            Client->>BMS: Send Password (0x18: XOR(Pwd, Mac, Random))
+            BMS-->>Client: Response (0x00: OK)
+
+            Client->>BMS: Request Root Random (0x17)
+            BMS-->>Client: Random Byte (e.g. 0xB2)
+
+            Client->>BMS: Send Root Password (0x1D)
+            BMS-->>Client: Response (0x00: Auth Complete)
+
+            Note over Client,BMS: Now Standard Commands (0xDD) are allowed
+        </div>
 
         <h2 id="ble-service-specification">2. BLE Service Specification</h2>
 
@@ -459,12 +488,12 @@
 
         <h3>Request Packet Format</h3>
         <pre>
-┌─────────┬─────────┬──────┬────────┬──────────┬─────────────┬─────────────┬─────────┐
-│ Header  │ Command │ Mode │ Length │   Data   │ Checksum_H  │ Checksum_L  │  Tail   │
-├─────────┼─────────┼──────┼────────┼──────────┼─────────────┼─────────────┼─────────┤
-│  0xDD   │ 1 byte  │0xA5  │1 byte  │ N bytes  │   1 byte    │   1 byte    │  0x77   │
-└─────────┴─────────┴──────┴────────┴──────────┴─────────────┴─────────────┴─────────┘
-   Byte 0    Byte 1  Byte 2  Byte 3  Bytes 4-N    Byte N+4      Byte N+5     Byte N+6
+┌─────────┬─────────┬──────────┬────────┬──────────┬─────────────┬─────────────┬─────────┐
+│ Header  │ Action  │ Function │ Length │   Data   │ Checksum_H  │ Checksum_L  │  Tail   │
+├─────────┼─────────┼──────────┼────────┼──────────┼─────────────┼─────────────┼─────────┤
+│  0xDD   │ 0xA5/5A │  1 byte  │ 1 byte │  N bytes │   1 byte    │   1 byte    │  0x77   │
+└─────────┴─────────┴──────────┴────────┴──────────┴─────────────┴─────────────┴─────────┘
+   Byte 0    Byte 1    Byte 2    Byte 3   Bytes 4-N    Byte N+4      Byte N+5     Byte N+6
 
 Total Length = Data Length + 7 bytes</pre>
 
@@ -702,21 +731,36 @@ Client                                    BMS Device
 
         <h3>Checksum Algorithm</h3>
         <pre>
-def calculate_checksum(command: int, data: bytes) -&gt; tuple[int, int]:
+def calculate_checksum(action: int, function: int, length: int, data: bytes) -> tuple[int, int]:
     """
     Calculate 16-bit checksum
     Returns: (high_byte, low_byte)
     """
-    checksum = command
+    checksum = action + function + length
     for byte in data:
         checksum += byte
     
     # Apply modulo and split into bytes
-    checksum = checksum % 65536
-    high_byte = (checksum &gt;&gt; 8) & 0xFF
+    checksum = ~checksum + 1
+    checksum = checksum & 0xFFFF
+    high_byte = (checksum >> 8) & 0xFF
     low_byte = checksum & 0xFF
     
     return (high_byte, low_byte)
+</pre>
+
+        <h3>Authentication Checksum</h3>
+        <pre>
+def calculate_auth_checksum(payload: bytes) -> int:
+    """
+    Calculate 8-bit checksum for Auth packets (Header FF, AA)
+    Sum of payload bytes (Cmd + Len + Data)
+    """
+    checksum = 0
+    for byte in payload:
+        checksum += byte
+    
+    return checksum & 0xFF
 </pre>
 
         <h2 id="state-machine">7. State Machine</h2>

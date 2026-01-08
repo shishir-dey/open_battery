@@ -64,7 +64,7 @@ class BmsProvider extends ChangeNotifier {
   }
 
   void _startListening() {
-    _responseSubscription = _bleService.responseStream?.listen((data) {
+    _responseSubscription = _bleService.responseStream.listen((data) {
       try {
         final packet = BmsProtocol.parseResponse(data);
         final cmd = packet['command'];
