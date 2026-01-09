@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/services/ble_service.dart
+ * Description: Service class for handling Bluetooth Low Energy (BLE) communication with BMS devices, including authentication and data streaming.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';

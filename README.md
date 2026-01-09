@@ -1,4 +1,4 @@
-# Open Battery — Generic Chinese BMS Companion App
+# Open Battery (Generic Chinese BMS Companion App)
 
 ## Setup and Build
 

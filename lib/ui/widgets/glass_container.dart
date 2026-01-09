@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/ui/widgets/glass_container.dart
+ * Description: Custom widget that provides a glassmorphism effect with blur and transparency for UI elements.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme.dart';

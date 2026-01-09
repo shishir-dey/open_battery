@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/providers/bms_provider.dart
+ * Description: Provider class that manages BMS data state and handles BLE communication through the service.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';

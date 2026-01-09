@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/ui/screens/dashboard_screen.dart
+ * Description: Main dashboard screen displaying BMS data including SOC, voltage, current, and other metrics.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

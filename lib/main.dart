@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/main.dart
+ * Description: Entry point of the Open Battery Flutter application. Initializes the app with providers and sets up the main material app.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/bms_provider.dart';

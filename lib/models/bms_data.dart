@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/models/bms_data.dart
+ * Description: Defines data models for BMS information including base info, cell voltages, and hardware version.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 /// Represents the Base Information from Command 0x03 (Jiabaida BMS)
 class BmsBaseInfo {
   final double totalVoltage; // V

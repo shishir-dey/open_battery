@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/ui/screens/cells_screen.dart
+ * Description: Screen widget for displaying individual cell voltages in a grid layout with statistics.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:provider/provider.dart';
