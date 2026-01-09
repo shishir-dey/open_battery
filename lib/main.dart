@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/bms_provider.dart';
 import 'ui/theme.dart';
-import 'ui/screens/scan_screen.dart';
+import 'ui/screens/splash_screen.dart';
 
 void main() {
   runApp(const OpenBattery());
@@ -19,7 +19,7 @@ class OpenBattery extends StatelessWidget {
         title: 'Open Battery',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        home: const ScanScreen(),
+        home: const SplashScreen(),
       ),
     );
   }
