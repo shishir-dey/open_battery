@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/ui/screens/scan_screen.dart
+ * Description: Screen for scanning and discovering BLE devices, allowing users to connect to BMS devices.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:provider/provider.dart';

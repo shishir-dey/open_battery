@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/ui/theme.dart
+ * Description: Defines the app's theme including colors, text styles, and material theme data for a dark UI.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

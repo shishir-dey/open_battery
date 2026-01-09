@@ -1,5 +1,13 @@
 // ignore_for_file: constant_identifier_names
 
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/protocol/bms_protocol.dart
+ * Description: Implements the BMS protocol for communicating with Jiabaida BMS devices, including packet creation and parsing.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'crc_utils.dart';
 
 /// BMS Protocol Handler for Jiabaida BMS

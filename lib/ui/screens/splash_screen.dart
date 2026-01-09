@@ -1,5 +1,12 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/ui/screens/splash_screen.dart
+ * Description: Splash screen displayed on app launch with a fade-in animation before navigating to the scan screen.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 import 'package:flutter/cupertino.dart';
-import '../theme.dart';
 import 'scan_screen.dart';
 
 class SplashScreen extends StatefulWidget {

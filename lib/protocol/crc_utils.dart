@@ -1,3 +1,11 @@
+/*
+ * Open Battery (Generic Chinese BMS Companion App)
+ * File: lib/protocol/crc_utils.dart
+ * Description: Provides CRC utilities for calculating checksums used in the BMS protocol.
+ * Author: Shishir Dey
+ * License: MIT
+ */
+
 /// CRC Utils for calculating 16-bit checksum
 class CrcUtils {
   /// Calculate 16-bit checksum: sum of all bytes (Cmd, Mode, Len, Data), invert, +1 (Jiabaida protocol)
