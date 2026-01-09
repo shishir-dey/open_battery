@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:provider/provider.dart';
 import '../../providers/bms_provider.dart';
 import '../theme.dart';
@@ -15,40 +16,25 @@ class CellsScreen extends StatelessWidget {
         child: Consumer<BmsProvider>(
           builder: (context, provider, child) {
             final cells = provider.cellVoltages;
-            if (cells == null) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(color: AppTheme.systemBlue),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Waiting for cell data...",
-                      style: AppTheme.body.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
 
             // Calculate stats
-            double maxV = cells.voltages.isNotEmpty
-                ? cells.voltages.reduce(
-                    (curr, next) => curr > next ? curr : next,
-                  )
-                : 0;
-            double minV = cells.voltages.isNotEmpty
-                ? cells.voltages.reduce(
-                    (curr, next) => curr < next ? curr : next,
-                  )
-                : 0;
-            double diff = maxV - minV;
-            double avg = cells.voltages.isNotEmpty
-                ? (cells.voltages.fold(0.0, (p, c) => p + c) /
-                      cells.voltages.length)
-                : 0;
+            double maxV = 0;
+            double minV = 0;
+            double diff = 0;
+            double avg = 0;
+
+            if (cells != null && cells.voltages.isNotEmpty) {
+              maxV = cells.voltages.reduce(
+                (curr, next) => curr > next ? curr : next,
+              );
+              minV = cells.voltages.reduce(
+                (curr, next) => curr < next ? curr : next,
+              );
+              diff = maxV - minV;
+              avg =
+                  cells.voltages.fold(0.0, (p, c) => p + c) /
+                  cells.voltages.length;
+            }
 
             return Column(
               children: [
@@ -68,9 +54,7 @@ class CellsScreen extends StatelessWidget {
                         ),
                         onPressed: () => Navigator.pop(context),
                       ),
-                      Expanded(
-                        child: Text("Cells", style: AppTheme.largeTitle),
-                      ),
+                      Expanded(child: Text("Cells", style: AppTheme.title2)),
                     ],
                   ),
                 ),
@@ -86,27 +70,35 @@ class CellsScreen extends StatelessWidget {
                         children: [
                           _buildMiniStat(
                             "Max",
-                            maxV.toStringAsFixed(3),
+                            cells != null && cells.voltages.isNotEmpty
+                                ? maxV.toStringAsFixed(3)
+                                : "--",
                             "V",
                             AppTheme.systemRed,
                           ),
                           _buildMiniStat(
                             "Min",
-                            minV.toStringAsFixed(3),
+                            cells != null && cells.voltages.isNotEmpty
+                                ? minV.toStringAsFixed(3)
+                                : "--",
                             "V",
                             AppTheme.systemBlue,
                           ),
                           _buildMiniStat(
                             "Diff",
-                            (diff * 1000).toStringAsFixed(0),
+                            cells != null && cells.voltages.isNotEmpty
+                                ? (diff * 1000).toStringAsFixed(0)
+                                : "--",
                             "mV",
-                            diff > 0.02
+                            (cells != null && diff > 0.02)
                                 ? AppTheme.warning
-                                : AppTheme.success, // Warning if diff > 20mV
+                                : AppTheme.success,
                           ),
                           _buildMiniStat(
                             "Avg",
-                            avg.toStringAsFixed(3),
+                            cells != null && cells.voltages.isNotEmpty
+                                ? avg.toStringAsFixed(3)
+                                : "--",
                             "V",
                             Colors.white,
                           ),
@@ -118,124 +110,147 @@ class CellsScreen extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // List
+                // Grid
                 Expanded(
-                  child: ListView.separated(
+                  child: GridView.builder(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    itemCount: cells.voltages.length,
-                    separatorBuilder: (c, i) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final voltage = cells.voltages[index];
-                      // Color grading for voltage
-                      Color barColor = AppTheme.systemGreen;
-                      if (voltage < 3.0) {
-                        barColor = AppTheme.systemRed;
-                      } else if (voltage > 4.15) {
-                        barColor = AppTheme.systemOrange;
-                      }
-
-                      // Normalize for visual bar: assume range 3.0V to 4.2V generally useful
-                      // Clamping for display purposes
-                      double normalized = (voltage - 2.8) / (4.2 - 2.8);
-                      normalized = normalized.clamp(0.0, 1.0);
-
-                      return GlassContainer(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          childAspectRatio: 0.85,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
                         ),
-                        child: Row(
-                          children: [
-                            // Cell Number
-                            SizedBox(
-                              width: 30,
-                              child: Text(
-                                "${index + 1}",
-                                style: AppTheme.headline.copyWith(
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
+                    itemCount: math.max(
+                      4,
+                      cells?.voltages.length ?? 0,
+                    ), // Minimum 4 cells
+                    itemBuilder: (context, index) {
+                      // Check if we have real data for this index
+                      if (cells != null && index < cells.voltages.length) {
+                        final voltage = cells.voltages[index];
+                        // Color grading for voltage
+                        Color barColor = AppTheme.systemGreen;
+                        if (voltage < 3.0) {
+                          barColor = AppTheme.systemRed;
+                        } else if (voltage > 4.15) {
+                          barColor = AppTheme.systemOrange;
+                        }
 
-                            // Visual Bar
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        // Normalize for visual bar
+                        double normalized = (voltage - 2.8) / (4.2 - 2.8);
+                        normalized = normalized.clamp(0.0, 1.0);
+
+                        return GlassContainer(
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Voltage Text
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Voltage",
-                                        style: AppTheme.label.copyWith(
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                      Text(
-                                        "${voltage.toStringAsFixed(3)} V",
-                                        style: AppTheme.headline.copyWith(
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    "#${index + 1}",
+                                    style: AppTheme.label.copyWith(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 10,
+                                    ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  // Custom Bar
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      return Stack(
-                                        children: [
-                                          // Track
-                                          Container(
-                                            height: 6,
-                                            width: double.infinity,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white10,
-                                              borderRadius:
-                                                  BorderRadius.circular(3),
-                                            ),
-                                          ),
-                                          // Fill
-                                          AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 500,
-                                            ),
-                                            curve: Curves.easeOutCubic,
-                                            height: 6,
-                                            width:
-                                                constraints.maxWidth *
-                                                normalized,
-                                            decoration: BoxDecoration(
-                                              color: barColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(3),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: barColor.withValues(
-                                                    alpha: 0.5,
-                                                  ),
-                                                  blurRadius: 6,
-                                                  spreadRadius: -1,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: barColor,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      );
+                              // Voltage
+                              Center(
+                                child: Text(
+                                  voltage.toStringAsFixed(3),
+                                  style: AppTheme.headline.copyWith(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              // Bar
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(2),
+                                child: LinearProgressIndicator(
+                                  value: normalized,
+                                  backgroundColor: Colors.white10,
+                                  valueColor: AlwaysStoppedAnimation(barColor),
+                                  minHeight: 4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      } else {
+                        // Placeholder Cell
+                        return GlassContainer(
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "#${index + 1}",
+                                    style: AppTheme.label.copyWith(
+                                      color: AppTheme.textSecondary.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white10,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // Voltage Placeholder
+                              Center(
+                                child: Text(
+                                  "--",
+                                  style: AppTheme.headline.copyWith(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white24,
+                                  ),
+                                ),
+                              ),
+                              // Empty Bar
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(2),
+                                child: LinearProgressIndicator(
+                                  value: 0,
+                                  backgroundColor: Colors.white10,
+                                  minHeight: 4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
                     },
                   ),
                 ),

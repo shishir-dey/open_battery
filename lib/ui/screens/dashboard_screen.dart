@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/bms_provider.dart';
 import 'cells_screen.dart';
+import 'scan_screen.dart';
 import '../theme.dart';
 import '../widgets/glass_container.dart';
 
@@ -54,232 +55,242 @@ class DashboardScreen extends StatelessWidget {
               ),
 
               SafeArea(
-                child: info == null
-                    ? const Center(child: CircularProgressIndicator())
-                    : Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: Column(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Column(
+                    children: [
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10, bottom: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Header
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 10,
-                                bottom: 20,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    provider.device?.platformName ?? "BMS",
-                                    style: AppTheme.largeTitle,
-                                  ),
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.grid_view,
-                                          color: Colors.white,
-                                        ),
-                                        onPressed: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => const CellsScreen(),
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.power_settings_new,
-                                          color: AppTheme.systemRed,
-                                        ),
-                                        onPressed: () {
-                                          provider.disconnect();
-                                          Navigator.pushReplacementNamed(
-                                            context,
-                                            '/',
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                            Text(
+                              provider.device?.platformName ?? "BMS",
+                              style: AppTheme.title2,
                             ),
-
-                            // Hero SOC Ring
-                            GlassContainer(
-                              padding: const EdgeInsets.all(32),
-                              child: Column(
-                                children: [
-                                  SizedBox(
-                                    height: 220,
-                                    width: 220,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        // BG Ring
-                                        const SizedBox(
-                                          width: 220,
-                                          height: 220,
-                                          child: CircularProgressIndicator(
-                                            value: 1.0,
-                                            color: Color(0xFF1C1C1E),
-                                            strokeWidth: 24,
-                                          ),
-                                        ),
-                                        // Value Ring
-                                        SizedBox(
-                                          width: 220,
-                                          height: 220,
-                                          child: TweenAnimationBuilder<double>(
-                                            tween: Tween(
-                                              begin: 0,
-                                              end: info.rsoc / 100.0,
-                                            ),
-                                            duration: const Duration(
-                                              milliseconds: 1500,
-                                            ),
-                                            curve: Curves.easeOutQuart,
-                                            builder: (context, value, _) =>
-                                                CircularProgressIndicator(
-                                                  value: value,
-                                                  color: _getSocColor(
-                                                    info.rsoc,
-                                                  ),
-                                                  strokeWidth: 24,
-                                                  strokeCap: StrokeCap.round,
-                                                ),
-                                          ),
-                                        ),
-                                        // Text
-                                        Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              "${info.rsoc}%",
-                                              style: AppTheme.largeValue
-                                                  .copyWith(
-                                                    fontSize: 52,
-                                                    fontWeight: FontWeight.w200,
-                                                  ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 4,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: _getStatusColor(
-                                                  info,
-                                                ).withValues(alpha: 0.2),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                border: Border.all(
-                                                  color: _getStatusColor(
-                                                    info,
-                                                  ).withValues(alpha: 0.5),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: Text(
-                                                _getStatusText(info),
-                                                style: AppTheme.label.copyWith(
-                                                  color: _getStatusColor(info),
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.grid_view,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const CellsScreen(),
                                     ),
                                   ),
-                                  const SizedBox(height: 24),
-                                  // Power metric
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      _buildQuickInfo(
-                                        "Power",
-                                        "${(info.totalVoltage * info.current).abs().toStringAsFixed(0)}W",
-                                        Colors.white,
-                                      ),
-                                      Container(
-                                        width: 1,
-                                        height: 30,
-                                        color: Colors.white10,
-                                      ),
-                                      _buildQuickInfo(
-                                        "Current",
-                                        "${info.current.toStringAsFixed(1)}A",
-                                        info.current > 0
-                                            ? AppTheme.success
-                                            : (info.current < 0
-                                                  ? AppTheme.error
-                                                  : Colors.white),
-                                      ),
-                                      Container(
-                                        width: 1,
-                                        height: 30,
-                                        color: Colors.white10,
-                                      ),
-                                      _buildQuickInfo(
-                                        "Voltage",
-                                        "${info.totalVoltage.toStringAsFixed(1)}V",
-                                        AppTheme.systemBlue,
-                                      ),
-                                    ],
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.power_settings_new,
+                                    color: AppTheme.systemRed,
                                   ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Stats Grid
-                            Expanded(
-                              child: GridView.count(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: 1.4,
-                                children: [
-                                  _buildStatCard(
-                                    "Rem. Cap",
-                                    "${info.remainingCapacity.toStringAsFixed(2)}Ah",
-                                    Icons.battery_full,
-                                    AppTheme.systemGreen,
-                                  ),
-                                  _buildStatCard(
-                                    "Temp",
-                                    info.temperatures.isNotEmpty
-                                        ? "${info.temperatures.first}°C"
-                                        : "--",
-                                    Icons.thermostat,
-                                    Colors.orange,
-                                  ),
-                                  _buildStatCard(
-                                    "Cycles",
-                                    "${info.cycleCount}",
-                                    Icons.refresh,
-                                    Colors.blueGrey,
-                                  ),
-                                  _buildStatCard(
-                                    "SoH",
-                                    "${100}%",
-                                    Icons.health_and_safety,
-                                    AppTheme.systemBlue,
-                                  ),
-                                ],
-                              ),
+                                  onPressed: () {
+                                    provider.disconnect();
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const ScanScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
+
+                      // Hero SOC Ring
+                      const Spacer(),
+                      GlassContainer(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 24,
+                          horizontal: 16,
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: 180,
+                              width: 180,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // BG Ring
+                                  const SizedBox(
+                                    width: 180,
+                                    height: 180,
+                                    child: CircularProgressIndicator(
+                                      value: 1.0,
+                                      color: Color(0xFF1C1C1E),
+                                      strokeWidth: 16,
+                                    ),
+                                  ),
+                                  // Value Ring
+                                  SizedBox(
+                                    width: 180,
+                                    height: 180,
+                                    child: TweenAnimationBuilder<double>(
+                                      tween: Tween(
+                                        begin: 0,
+                                        end: (info?.rsoc ?? 0) / 100.0,
+                                      ),
+                                      duration: const Duration(
+                                        milliseconds: 1500,
+                                      ),
+                                      curve: Curves.easeOutQuart,
+                                      builder: (context, value, _) =>
+                                          CircularProgressIndicator(
+                                            value: value,
+                                            color: _getSocColor(
+                                              info?.rsoc ?? 0,
+                                            ),
+                                            strokeWidth: 16,
+                                            strokeCap: StrokeCap.round,
+                                          ),
+                                    ),
+                                  ),
+                                  // Text
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        info != null ? "${info.rsoc}%" : "--%",
+                                        style: AppTheme.largeValue.copyWith(
+                                          fontSize: 42,
+                                          fontWeight: FontWeight.w200,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _getStatusColor(
+                                            info,
+                                          ).withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: _getStatusColor(
+                                              info,
+                                            ).withValues(alpha: 0.5),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _getStatusText(info),
+                                          style: AppTheme.label.copyWith(
+                                            color: _getStatusColor(info),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Power metric
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _buildQuickInfo(
+                                  "Power",
+                                  info != null
+                                      ? "${(info.totalVoltage * info.current).abs().toStringAsFixed(0)}W"
+                                      : "--W",
+                                  Colors.white,
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: Colors.white10,
+                                ),
+                                _buildQuickInfo(
+                                  "Current",
+                                  info != null
+                                      ? "${info.current.toStringAsFixed(1)}A"
+                                      : "--A",
+                                  info != null
+                                      ? (info.current > 0
+                                            ? AppTheme.success
+                                            : (info.current < 0
+                                                  ? AppTheme.error
+                                                  : Colors.white))
+                                      : Colors.white,
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: Colors.white10,
+                                ),
+                                _buildQuickInfo(
+                                  "Voltage",
+                                  info != null
+                                      ? "${info.totalVoltage.toStringAsFixed(1)}V"
+                                      : "--V",
+                                  AppTheme.systemBlue,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Spacer(),
+
+                      // Stats Grid
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1.6,
+                        children: [
+                          _buildStatCard(
+                            "Rem. Cap",
+                            info != null
+                                ? "${info.remainingCapacity.toStringAsFixed(2)}Ah"
+                                : "--Ah",
+                            Icons.battery_full,
+                            AppTheme.systemGreen,
+                          ),
+                          _buildStatCard(
+                            "Temp",
+                            (info != null && info.temperatures.isNotEmpty)
+                                ? "${info.temperatures.first.toStringAsFixed(1)}°C"
+                                : "--",
+                            Icons.thermostat,
+                            Colors.orange,
+                          ),
+                          _buildStatCard(
+                            "Cycles",
+                            info != null ? "${info.cycleCount}" : "--",
+                            Icons.refresh,
+                            Colors.blueGrey,
+                          ),
+                          _buildStatCard(
+                            "SoH",
+                            "${100}%", // Placeholder for now
+                            Icons.health_and_safety,
+                            AppTheme.systemBlue,
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -294,12 +305,14 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Color _getStatusColor(dynamic info) {
+    if (info == null) return AppTheme.systemBlue;
     if (info.isCharging) return AppTheme.success;
     if (info.isDischarging) return AppTheme.error;
     return AppTheme.textSecondary;
   }
 
   String _getStatusText(dynamic info) {
+    if (info == null) return "CONNECTING...";
     if (info.isCharging) return "CHARGING";
     if (info.isDischarging) return "DISCHARGING";
     return "IDLE";

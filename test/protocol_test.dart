@@ -345,6 +345,25 @@ void main() {
         );
       });
 
+      test('should define standard packet with padding', () {
+        final packet = [
+          0xDD,
+          0xA5,
+          0x05,
+          0x00,
+          0xFF,
+          0x56,
+          0x77,
+          0x00,
+          0x00,
+          0x00,
+        ];
+        final result = BmsProtocol.parseResponse(packet);
+        expect(result['type'], equals('standard'));
+        expect(result['command'], equals(0xA5));
+        expect(result['status'], equals(0x05));
+      });
+
       test('should identify standard packet', () {
         final packet = [0xDD, 0x03, 0x00, 0x00, 0xFF, 0xFD, 0x77];
         final result = BmsProtocol.parseResponse(packet);
