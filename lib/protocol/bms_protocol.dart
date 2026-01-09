@@ -84,8 +84,21 @@ class BmsProtocol {
     if (packet.isEmpty) throw const FormatException("Empty packet");
 
     // Standard Packet
-    if (packet[0] == HEADER && packet.last == TAIL) {
-      return _parseStandardPacket(packet);
+    if (packet[0] == HEADER) {
+      // Check for standard packet with padding
+      if (packet.length >= 4) {
+        int len = packet[3];
+        int expectedLen =
+            len + 7; // Header + Action + Func + Len + Data + ChkH + ChkL + Tail
+        if (packet.length >= expectedLen && packet[expectedLen - 1] == TAIL) {
+          return _parseStandardPacket(packet.sublist(0, expectedLen));
+        }
+      }
+
+      // Fallback for strict match (no padding)
+      if (packet.last == TAIL) {
+        return _parseStandardPacket(packet);
+      }
     }
 
     // Auth Packet (can be notified on FF02 or FF01 depending on device)
