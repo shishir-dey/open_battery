@@ -786,19 +786,21 @@ def calculate_auth_checksum(payload: bytes) -> int:
             [*] --> STATIC
 
             STATIC --> PRE_CHARGE: "Current > 0"
-            STATIC --> PRE_DISCHARGE: "Current < 0" PRE_CHARGE --> CHARGE: "Sustained current"
-                CHARGE --> BEFORE_CHG_STOP: "Voltage peak detected"
-                BEFORE_CHG_STOP --> AFTER_CHARGE: "Current stops"
-                AFTER_CHARGE --> STATIC: "Stabilized"
+            STATIC --> PRE_DISCHARGE: "Current < 0"
+            
+            PRE_CHARGE --> CHARGE: "Sustained current"
+            CHARGE --> BEFORE_CHG_STOP: "Voltage peak detected"
+            BEFORE_CHG_STOP --> AFTER_CHARGE: "Current stops"
+            AFTER_CHARGE --> STATIC: "Stabilized"
 
-                PRE_DISCHARGE --> DISCHARGE: "Sustained current"
-                DISCHARGE --> STOP_DISCHARGE: "Current stops"
-                STOP_DISCHARGE --> AFTER_DISCHARGE: "Confirmed stop"
-                AFTER_DISCHARGE --> STATIC: "Stabilized"
+            PRE_DISCHARGE --> DISCHARGE: "Sustained current"
+            DISCHARGE --> STOP_DISCHARGE: "Current stops"
+            STOP_DISCHARGE --> AFTER_DISCHARGE: "Confirmed stop"
+            AFTER_DISCHARGE --> STATIC: "Stabilized"
 
-                STATIC --> OVERTEMP: "Temp > 60C"
-                CHARGE --> TEMP_UNEXPECTED: "DeltaTemp > 5C"
-                DISCHARGE --> TEMP_UNEXPECTED: "DeltaTemp > 5C"
+            STATIC --> OVERTEMP: "Temp > 60C"
+            CHARGE --> TEMP_UNEXPECTED: "DeltaTemp > 5C"
+            DISCHARGE --> TEMP_UNEXPECTED: "DeltaTemp > 5C"
         </div>
 
         <h2 id="error-handling">8. Error Handling</h2>
