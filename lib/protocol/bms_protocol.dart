@@ -8,6 +8,7 @@
  * License: MIT
  */
 
+import 'package:flutter/foundation.dart';
 import 'crc_utils.dart';
 
 /// BMS Protocol Handler for Jiabaida BMS
@@ -24,8 +25,8 @@ class BmsProtocol {
   static const int CMD_READ_BASE_INFO = 0x03;
   static const int CMD_READ_CELL_VOLTAGES = 0x04;
   static const int CMD_READ_HARDWARE_VERSION = 0x05;
-  static const int CMD_MOS_CONTROL = 0xE1; // Also an address for writing
-  static const int CMD_RESET_PASSWORD = 0x00; // Factory mode / Enter/Exit
+  static const int CMD_MOS_CONTROL = 0xE1;
+  static const int CMD_RESET_PASSWORD = 0x00;
 
   // === Authentication Protocol ===
   static const int AUTH_HEADER = 0xFF;
@@ -40,23 +41,18 @@ class BmsProtocol {
   static const int AUTH_CMD_SEND_ROOT_PASSWORD = 0x1D;
 
   /// Create a request packet
-  /// JBD Format: DD ACTION FUNCTION LENGTH DATA CHECKSUM_H CHECKSUM_L 77
-  /// Note: Previous Dart implementation swapped Action and Function.
+  /// Request Format: DD ACTION FUNCTION LENGTH DATA CHECKSUM_H CHECKSUM_L 77
+  /// Checksum covers: FUNCTION + LENGTH + DATA (per protocol spec)
   static List<int> createPacket(
     int action,
     int function, [
     List<int> data = const [],
   ]) {
     int length = data.length;
-    // Packet structure: [DD, Action, Function, Length, Data...]
     List<int> packet = [HEADER, action, function, length, ...data];
 
-    var (high, low) = CrcUtils.calculateChecksum(
-      action,
-      function,
-      length,
-      data,
-    );
+    // Checksum covers function + length + data (matching Adafruit/ESPHome)
+    var (high, low) = CrcUtils.calculateRequestChecksum(function, length, data);
     packet.add(high);
     packet.add(low);
     packet.add(TAIL);
@@ -67,20 +63,6 @@ class BmsProtocol {
   /// Create Authentication Packet
   /// Format: FF AA CMD LEN DATA CHECKSUM
   static List<int> createAuthPacket(int command, [List<int> data = const []]) {
-    // For auth packets, length byte is NOT included in checksum for some commands?
-    // C++ 'auth_chksum_' sums data bytes.
-    // Frame: Header(FF) Second(AA) Cmd Len Data... Checksum
-    // Checksum = Sum(Data) - wait, let's check C++
-    // C++ `send_app_key_`: frame[4]..frame[9] = '000000'.
-    // chksum range: frame+2 (Cmd) with len = 8.
-    // frame[2]=CMD, frame[3]=LEN, frame[4..9]=DATA.
-    // So sum is Cmd + Len + Data.
-
-    // C++ `auth_chksum_`: for i=0 to length; sum += data[i].
-    // Wait, in `send_app_key_`: `auth_chksum_(frame + 2, 8)`.
-    // Frame+2 is Cmd.
-    // So it sums Cmd, Len, and Data.
-
     List<int> payload = [command, data.length, ...data];
     int checksum = CrcUtils.calculateAuthChecksum(payload);
 
@@ -91,25 +73,27 @@ class BmsProtocol {
   static Map<String, dynamic> parseResponse(List<int> packet) {
     if (packet.isEmpty) throw const FormatException("Empty packet");
 
-    // Standard Packet
+    // Standard Packet - Response starts with DD
     if (packet[0] == HEADER) {
-      // Check for standard packet with padding
-      if (packet.length >= 4) {
+      // Check minimum packet size (DD CMD STATUS LEN CHK_H CHK_L 77)
+      if (packet.length >= 7) {
         int len = packet[3];
         int expectedLen =
-            len + 7; // Header + Action + Func + Len + Data + ChkH + ChkL + Tail
+            len + 7; // DD + CMD + STATUS + LEN + DATA + CHK_H + CHK_L + 77
+
+        // Handle padded packets
         if (packet.length >= expectedLen && packet[expectedLen - 1] == TAIL) {
           return _parseStandardPacket(packet.sublist(0, expectedLen));
         }
-      }
 
-      // Fallback for strict match (no padding)
-      if (packet.last == TAIL) {
-        return _parseStandardPacket(packet);
+        // Fallback for exact length packets
+        if (packet.length == expectedLen && packet.last == TAIL) {
+          return _parseStandardPacket(packet);
+        }
       }
     }
 
-    // Auth Packet (can be notified on FF02 or FF01 depending on device)
+    // Auth Packet
     if (packet.length >= 4 &&
         packet[0] == AUTH_HEADER &&
         packet[1] == AUTH_SECOND_BYTE) {
@@ -122,41 +106,38 @@ class BmsProtocol {
   static Map<String, dynamic> _parseStandardPacket(List<int> packet) {
     if (packet.length < 7) throw const FormatException("Packet too short");
 
-    // 0:DD 1:Func 2:Status 3:Len 4..N:Data N+1:Chkh N+2:Chkl N+3:77
-    // IMPORTANT: Client sends [DD Action Function...], Device replies [DD Function Status...]
-    // But wait, C++ 'on_jbd_bms_data': function = raw[1].
-    // So Response: DD FUNCTION STATUS LEN DATA...
-
-    int function = packet[1];
+    // Response format from Java: DD COMMAND STATUS LENGTH DATA CHECKSUM_H CHECKSUM_L 77
+    // Where COMMAND echoes back the function from the request
+    int command = packet[1];
     int status = packet[2];
     int length = packet[3];
 
     if (packet.length < length + 7) {
-      throw const FormatException("Packet incomplete");
+      throw FormatException(
+        "Packet incomplete: expected ${length + 7}, got ${packet.length}",
+      );
     }
 
     List<int> data = packet.sublist(4, 4 + length);
 
-    // Verify CRC
-    // Response CRC: Sum(Function, Status, Len, Data) -> inv -> +1
+    // Verify CRC - checksum covers length + data bytes only
     int checksumH = packet[4 + length];
     int checksumL = packet[4 + length + 1];
 
-    var (calcH, calcL) = CrcUtils.calculateChecksum(
-      function,
-      status,
-      length,
-      data,
-    );
+    var (calcH, calcL) = CrcUtils.calculateResponseChecksum(length, data);
 
+    // Log checksum validation for debugging
     if (calcH != checksumH || calcL != checksumL) {
-      // Ideally throw exception, but for debug we might return error
-      // throw const FormatException("Checksum mismatch");
+      debugPrint(
+        "⚠️ Checksum: received=0x${checksumH.toRadixString(16)}${checksumL.toRadixString(16)}, "
+        "calculated=0x${calcH.toRadixString(16)}${calcL.toRadixString(16)}",
+      );
+      // Continue processing - some BMS units have non-standard checksums
     }
 
     return {
       'type': 'standard',
-      'command': function,
+      'command': command,
       'status': status,
       'data': data,
     };
@@ -167,17 +148,14 @@ class BmsProtocol {
     int command = packet[2];
     int length = packet[3];
 
-    // Validation?
-
     List<int> data = [];
     if (packet.length > 4) {
-      int availableData = packet.length - 5; // minus FF AA CMD LEN ... CHK
+      int availableData = packet.length - 5;
       if (availableData > 0) {
         data = packet.sublist(
           4,
           4 + ((availableData < length) ? availableData : length),
         );
-        // Note: sometimes length might be inaccurate or we just take what's there
       }
     }
 
@@ -196,13 +174,16 @@ class BmsProtocol {
 
   /// Create MOS control packet
   static List<int> createMosControlPacket(int controlValue) {
-    // C++: address 0xE1, Data len 2, Value = current_mos_status & ...
-    // Here we just pass the 2 bytes of data.
-    // controlValue should be 0x0001, 0x0002 etc.
-    // Note: Protocol expects 2 bytes for the value.
     return createWritePacket(CMD_MOS_CONTROL, [
       (controlValue >> 8) & 0xFF,
       controlValue & 0xFF,
     ]);
+  }
+
+  /// Helper method to format packet as hex string for debugging
+  static String packetToHex(List<int> packet) {
+    return packet
+        .map((b) => b.toRadixString(16).toUpperCase().padLeft(2, '0'))
+        .join(' ');
   }
 }

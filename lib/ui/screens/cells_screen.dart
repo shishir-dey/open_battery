@@ -18,8 +18,10 @@ class CellsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+
     return Scaffold(
-      backgroundColor: Colors.black, // Dark background
+      backgroundColor: AppTheme.getBackground(context),
       body: SafeArea(
         child: Consumer<BmsProvider>(
           builder: (context, provider, child) {
@@ -55,14 +57,19 @@ class CellsScreen extends StatelessWidget {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.arrow_back_ios,
-                          color: Colors.white,
+                          color: AppTheme.getTextPrimary(context),
                           size: 20,
                         ),
                         onPressed: () => Navigator.pop(context),
                       ),
-                      Expanded(child: Text("Cells", style: AppTheme.title2)),
+                      Expanded(
+                        child: Text(
+                          "Cells",
+                          style: AppTheme.title2Style(context),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -77,38 +84,42 @@ class CellsScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _buildMiniStat(
+                            context,
                             "Max",
                             cells != null && cells.voltages.isNotEmpty
                                 ? maxV.toStringAsFixed(3)
                                 : "--",
                             "V",
-                            AppTheme.systemRed,
+                            AppTheme.getError(context),
                           ),
                           _buildMiniStat(
+                            context,
                             "Min",
                             cells != null && cells.voltages.isNotEmpty
                                 ? minV.toStringAsFixed(3)
                                 : "--",
                             "V",
-                            AppTheme.systemBlue,
+                            AppTheme.getPrimary(context),
                           ),
                           _buildMiniStat(
+                            context,
                             "Diff",
                             cells != null && cells.voltages.isNotEmpty
                                 ? (diff * 1000).toStringAsFixed(0)
                                 : "--",
                             "mV",
                             (cells != null && diff > 0.02)
-                                ? AppTheme.warning
-                                : AppTheme.success,
+                                ? AppTheme.getWarning(context)
+                                : AppTheme.getSuccess(context),
                           ),
                           _buildMiniStat(
+                            context,
                             "Avg",
                             cells != null && cells.voltages.isNotEmpty
                                 ? avg.toStringAsFixed(3)
                                 : "--",
                             "V",
-                            Colors.white,
+                            AppTheme.getTextPrimary(context),
                           ),
                         ],
                       ),
@@ -141,11 +152,11 @@ class CellsScreen extends StatelessWidget {
                       if (cells != null && index < cells.voltages.length) {
                         final voltage = cells.voltages[index];
                         // Color grading for voltage
-                        Color barColor = AppTheme.systemGreen;
+                        Color barColor = AppTheme.getSuccess(context);
                         if (voltage < 3.0) {
-                          barColor = AppTheme.systemRed;
+                          barColor = AppTheme.getError(context);
                         } else if (voltage > 4.15) {
-                          barColor = AppTheme.systemOrange;
+                          barColor = AppTheme.getWarning(context);
                         }
 
                         // Normalize for visual bar
@@ -165,10 +176,13 @@ class CellsScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     "#${index + 1}",
-                                    style: AppTheme.label.copyWith(
-                                      color: AppTheme.textSecondary,
-                                      fontSize: 10,
-                                    ),
+                                    style: AppTheme.labelStyle(context)
+                                        .copyWith(
+                                          color: AppTheme.getTextSecondary(
+                                            context,
+                                          ),
+                                          fontSize: 10,
+                                        ),
                                   ),
                                   Container(
                                     width: 6,
@@ -184,10 +198,11 @@ class CellsScreen extends StatelessWidget {
                               Center(
                                 child: Text(
                                   voltage.toStringAsFixed(3),
-                                  style: AppTheme.headline.copyWith(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: AppTheme.headlineStyle(context)
+                                      .copyWith(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                 ),
                               ),
                               // Bar
@@ -195,7 +210,9 @@ class CellsScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(2),
                                 child: LinearProgressIndicator(
                                   value: normalized,
-                                  backgroundColor: Colors.white10,
+                                  backgroundColor: isDark
+                                      ? Colors.white10
+                                      : Colors.black12,
                                   valueColor: AlwaysStoppedAnimation(barColor),
                                   minHeight: 4,
                                 ),
@@ -218,18 +235,21 @@ class CellsScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     "#${index + 1}",
-                                    style: AppTheme.label.copyWith(
-                                      color: AppTheme.textSecondary.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      fontSize: 10,
-                                    ),
+                                    style: AppTheme.labelStyle(context)
+                                        .copyWith(
+                                          color: AppTheme.getTextSecondary(
+                                            context,
+                                          ).withValues(alpha: 0.3),
+                                          fontSize: 10,
+                                        ),
                                   ),
                                   Container(
                                     width: 6,
                                     height: 6,
                                     decoration: BoxDecoration(
-                                      color: Colors.white10,
+                                      color: isDark
+                                          ? Colors.white10
+                                          : Colors.black12,
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -239,11 +259,14 @@ class CellsScreen extends StatelessWidget {
                               Center(
                                 child: Text(
                                   "--",
-                                  style: AppTheme.headline.copyWith(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white24,
-                                  ),
+                                  style: AppTheme.headlineStyle(context)
+                                      .copyWith(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? Colors.white24
+                                            : Colors.black26,
+                                      ),
                                 ),
                               ),
                               // Empty Bar
@@ -251,7 +274,9 @@ class CellsScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(2),
                                 child: LinearProgressIndicator(
                                   value: 0,
-                                  backgroundColor: Colors.white10,
+                                  backgroundColor: isDark
+                                      ? Colors.white10
+                                      : Colors.black12,
                                   minHeight: 4,
                                 ),
                               ),
@@ -270,10 +295,16 @@ class CellsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMiniStat(String label, String value, String unit, Color color) {
+  Widget _buildMiniStat(
+    BuildContext context,
+    String label,
+    String value,
+    String unit,
+    Color color,
+  ) {
     return Column(
       children: [
-        Text(label, style: AppTheme.label),
+        Text(label, style: AppTheme.labelStyle(context)),
         const SizedBox(height: 4),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -281,10 +312,15 @@ class CellsScreen extends StatelessWidget {
           children: [
             Text(
               value,
-              style: AppTheme.title2.copyWith(color: color, fontSize: 18),
+              style: AppTheme.title2Style(
+                context,
+              ).copyWith(color: color, fontSize: 18),
             ),
             const SizedBox(width: 2),
-            Text(unit, style: AppTheme.label.copyWith(fontSize: 12)),
+            Text(
+              unit,
+              style: AppTheme.labelStyle(context).copyWith(fontSize: 12),
+            ),
           ],
         ),
       ],

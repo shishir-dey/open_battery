@@ -100,14 +100,14 @@ class BmsBaseInfo {
     int ntcCount = data[22];
 
     // 23 onwards: NTC Values (2 bytes each, 0.1K units)
+    // ESPHome: (jbd_get_16bit(23 + (i * 2)) - 2731) * 0.1f
     List<double> temperatures = [];
     for (int i = 0; i < ntcCount; i++) {
       int tempIdx = 23 + (i * 2);
       if (tempIdx + 1 < data.length) {
         int tempRaw = (data[tempIdx] << 8) | data[tempIdx + 1];
-        // Convert from 0.1K absolute temperature to Celsius
-        double tempKelvin = tempRaw / 10.0;
-        double tempCelsius = tempKelvin - 273.15;
+        // Match ESPHome: subtract 2731 first, then multiply by 0.1
+        double tempCelsius = (tempRaw - 2731) * 0.1;
         temperatures.add(tempCelsius);
       }
     }

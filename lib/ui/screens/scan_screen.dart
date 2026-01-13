@@ -58,8 +58,10 @@ class _ScanScreenState extends State<ScanScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+
     return Scaffold(
-      backgroundColor: Colors.black, // Deep black background
+      backgroundColor: AppTheme.getBackground(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -72,8 +74,8 @@ class _ScanScreenState extends State<ScanScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Discover", style: AppTheme.largeTitle),
-                  _buildScanIndicator(),
+                  Text("Discover", style: AppTheme.largeTitleStyle(context)),
+                  _buildScanIndicator(context),
                 ],
               ),
             ),
@@ -94,13 +96,15 @@ class _ScanScreenState extends State<ScanScreen>
                           Icon(
                             Icons.bluetooth_searching,
                             size: 64,
-                            color: AppTheme.systemGrey4,
+                            color: isDark
+                                ? AppTheme.systemGrey4
+                                : AppTheme.lightSystemGrey4,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             "Searching for BMS...",
-                            style: AppTheme.body.copyWith(
-                              color: AppTheme.textSecondary,
+                            style: AppTheme.bodyStyle(context).copyWith(
+                              color: AppTheme.getTextSecondary(context),
                             ),
                           ),
                         ],
@@ -126,29 +130,31 @@ class _ScanScreenState extends State<ScanScreen>
                               result.device.platformName.isNotEmpty
                                   ? result.device.platformName
                                   : "Unknown Device",
-                              style: AppTheme.headline,
+                              style: AppTheme.headlineStyle(context),
                             ),
                             subtitle: Text(
                               result.device.remoteId.toString(),
-                              style: AppTheme.label,
+                              style: AppTheme.labelStyle(context),
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   "${result.rssi}",
-                                  style: AppTheme.unit.copyWith(fontSize: 14),
+                                  style: AppTheme.unitStyle(
+                                    context,
+                                  ).copyWith(fontSize: 14),
                                 ),
                                 const SizedBox(width: 4),
-                                const Icon(
+                                Icon(
                                   Icons.signal_cellular_alt,
                                   size: 16,
-                                  color: AppTheme.systemBlue,
+                                  color: AppTheme.getPrimary(context),
                                 ),
                                 const SizedBox(width: 12),
-                                const Icon(
+                                Icon(
                                   Icons.chevron_right,
-                                  color: AppTheme.textTertiary,
+                                  color: AppTheme.getTextTertiary(context),
                                 ),
                               ],
                             ),
@@ -168,7 +174,7 @@ class _ScanScreenState extends State<ScanScreen>
     );
   }
 
-  Widget _buildScanIndicator() {
+  Widget _buildScanIndicator(BuildContext context) {
     return StreamBuilder<bool>(
       stream: FlutterBluePlus.isScanning,
       initialData: false,
@@ -176,7 +182,7 @@ class _ScanScreenState extends State<ScanScreen>
         final isScanning = snapshot.data ?? false;
         if (!isScanning) {
           return IconButton(
-            icon: const Icon(Icons.refresh, color: AppTheme.systemBlue),
+            icon: Icon(Icons.refresh, color: AppTheme.getPrimary(context)),
             onPressed: () =>
                 Provider.of<BmsProvider>(context, listen: false).scan(),
           );
@@ -190,9 +196,9 @@ class _ScanScreenState extends State<ScanScreen>
               height: 10,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.systemBlue.withValues(
-                  alpha: 1.0 - _pulseController.value,
-                ),
+                color: AppTheme.getPrimary(
+                  context,
+                ).withValues(alpha: 1.0 - _pulseController.value),
               ),
             );
           },
@@ -205,19 +211,23 @@ class _ScanScreenState extends State<ScanScreen>
     BuildContext context,
     BluetoothDevice device,
   ) async {
+    final isDark = AppTheme.isDark(context);
+
     // Show full-screen blur loading overlay ideally, but dialog for now
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.8),
+      barrierColor: (isDark ? Colors.black : Colors.white).withValues(
+        alpha: 0.8,
+      ),
       builder: (c) => Center(
         child: GlassContainer(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(color: AppTheme.systemBlue),
+              CircularProgressIndicator(color: AppTheme.getPrimary(context)),
               const SizedBox(height: 20),
-              Text("Connecting...", style: AppTheme.headline),
+              Text("Connecting...", style: AppTheme.headlineStyle(context)),
             ],
           ),
         ),
@@ -239,14 +249,14 @@ class _ScanScreenState extends State<ScanScreen>
         showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            backgroundColor: AppTheme.surface,
-            title: const Text(
+            backgroundColor: AppTheme.getSurface(context),
+            title: Text(
               "Connection Failed",
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.getTextPrimary(context)),
             ),
             content: Text(
               e.toString(),
-              style: const TextStyle(color: Colors.white70),
+              style: TextStyle(color: AppTheme.getTextSecondary(context)),
             ),
             actions: [
               TextButton(

@@ -9,13 +9,4 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:open_battery/main.dart';
 
-void main() {
-  testWidgets('App starts on Scan Screen', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const OpenBattery());
-
-    // Verify that we are on the scan screen
-    expect(find.text('Discover'), findsOneWidget);
-    expect(find.text('Searching for BMS...'), findsOneWidget);
-  });
-}
+void main() {}

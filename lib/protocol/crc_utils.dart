@@ -8,26 +8,58 @@
 
 /// CRC Utils for calculating 16-bit checksum
 class CrcUtils {
-  /// Calculate 16-bit checksum: sum of all bytes (Cmd, Mode, Len, Data), invert, +1 (Jiabaida protocol)
-  /// Note: The command, mode/status, and length bytes are included in the sum.
+  /// Calculate 16-bit checksum for REQUEST packets
+  /// Protocol: 0x10000 - sum(function + length + data)
+  /// Reference: Adafruit nrf52 and ESPHome implementations
+  static (int high, int low) calculateRequestChecksum(
+    int function,
+    int length,
+    List<int> data,
+  ) {
+    int sum = function + length;
+    for (int byte in data) {
+      sum += byte;
+    }
+
+    // Protocol formula: 0x10000 - sum
+    int checksum = (0x10000 - sum) & 0xFFFF;
+    int highByte = (checksum >> 8) & 0xFF;
+    int lowByte = checksum & 0xFF;
+
+    return (highByte, lowByte);
+  }
+
+  /// Calculate 16-bit checksum for RESPONSE validation
+  /// Protocol: 0x10000 - sum(length + data)
+  /// The checksum includes the length byte and all data bytes
+  static (int high, int low) calculateResponseChecksum(
+    int length,
+    List<int> data,
+  ) {
+    int sum = length;
+    for (int byte in data) {
+      sum += byte;
+    }
+
+    // Protocol formula: 0x10000 - sum
+    int checksum = (0x10000 - sum) & 0xFFFF;
+    int highByte = (checksum >> 8) & 0xFF;
+    int lowByte = checksum & 0xFF;
+
+    return (highByte, lowByte);
+  }
+
+  /// Legacy method - kept for backwards compatibility with tests
+  /// Uses the request checksum logic
   static (int high, int low) calculateChecksum(
     int command,
     int modeOrStatus,
     int length,
     List<int> data,
   ) {
-    int checksum = command + modeOrStatus + length;
-    for (int byte in data) {
-      checksum += byte;
-    }
-
-    // Jiabaida checksum: sum → invert → +1
-    checksum = ~checksum + 1;
-    checksum = checksum & 0xFFFF; // Ensure 16-bit
-    int highByte = (checksum >> 8) & 0xFF;
-    int lowByte = checksum & 0xFF;
-
-    return (highByte, lowByte);
+    // For request packets, the checksum covers: function + length + data
+    // The 'command' param is actually the function in request context
+    return calculateRequestChecksum(command, length, data);
   }
 
   /// Calculate 8-bit checksum for Auth packets

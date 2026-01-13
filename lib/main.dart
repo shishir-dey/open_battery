@@ -26,7 +26,9 @@ class OpenBattery extends StatelessWidget {
       child: MaterialApp(
         title: 'Open Battery',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
         home: const SplashScreen(),
       ),
     );
