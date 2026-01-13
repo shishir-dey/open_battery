@@ -21,15 +21,18 @@ class BmsProvider extends ChangeNotifier {
   BmsCellVoltages? _cellVoltages;
   BmsHardwareVersion? _hardwareVersion;
   bool _isConnected = false;
+  bool _isAuthenticated = false;
 
   Timer? _pollingTimer;
   StreamSubscription? _responseSubscription;
+  StreamSubscription? _authSubscription;
 
   BluetoothDevice? get device => _device;
   BmsBaseInfo? get baseInfo => _baseInfo;
   BmsCellVoltages? get cellVoltages => _cellVoltages;
   BmsHardwareVersion? get hardwareVersion => _hardwareVersion;
   bool get isConnected => _isConnected;
+  bool get isAuthenticated => _isAuthenticated;
 
   Future<void> scan() async {
     await _bleService.startScan();
@@ -39,21 +42,25 @@ class BmsProvider extends ChangeNotifier {
     debugPrint("Provider: Stopping scan...");
     await _bleService.stopScan();
     try {
-      debugPrint("Provider: Calling BleService.connect...");
-      await _bleService.connect(device);
-      debugPrint("Provider: BleService connected. Setting state...");
-
       _device = device;
       _isConnected = true;
-      notifyListeners();
+      _isAuthenticated = false;
 
-      debugPrint("Provider: Starting listeners and polling...");
+      // Start listening FIRST
+      debugPrint("Provider: Starting listeners...");
       _startListening();
-      _startPolling();
+      _startAuthListening();
+
+      // THEN connect (which triggers auth)
+      debugPrint("Provider: Calling BleService.connect...");
+      await _bleService.connect(device);
+
+      notifyListeners();
       debugPrint("Provider: Connection setup complete.");
     } catch (e) {
       debugPrint("Provider: Connection error caught: $e");
       _isConnected = false;
+      _isAuthenticated = false;
       notifyListeners();
       rethrow;
     }
@@ -62,9 +69,11 @@ class BmsProvider extends ChangeNotifier {
   Future<void> disconnect() async {
     _stopPolling();
     await _responseSubscription?.cancel();
+    await _authSubscription?.cancel();
     await _bleService.disconnect();
     _device = null;
     _isConnected = false;
+    _isAuthenticated = false;
     _baseInfo = null;
     _cellVoltages = null;
     _hardwareVersion = null;
@@ -73,6 +82,9 @@ class BmsProvider extends ChangeNotifier {
 
   void _startListening() {
     _responseSubscription = _bleService.responseStream.listen((data) {
+      debugPrint(
+        "Provider: Received data: ${data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ').toUpperCase()}",
+      );
       try {
         final packet = BmsProtocol.parseResponse(data);
         final cmd = packet['command'];
@@ -80,6 +92,7 @@ class BmsProvider extends ChangeNotifier {
 
         if (cmd == BmsProtocol.CMD_READ_BASE_INFO) {
           _baseInfo = BmsBaseInfo.fromBytes(payload);
+          debugPrint("Provider: Parsed base info: $_baseInfo");
         } else if (cmd == BmsProtocol.CMD_READ_CELL_VOLTAGES) {
           _cellVoltages = BmsCellVoltages.fromBytes(payload);
         } else if (cmd == BmsProtocol.CMD_READ_HARDWARE_VERSION) {
@@ -92,11 +105,25 @@ class BmsProvider extends ChangeNotifier {
     });
   }
 
+  void _startAuthListening() {
+    debugPrint("Provider: Starting auth listening...");
+    _authSubscription = _bleService.authStatusStream.listen((isAuth) {
+      debugPrint("Provider: Auth status received: $isAuth");
+      _isAuthenticated = isAuth;
+      if (isAuth) {
+        debugPrint("Provider: Authenticated, starting polling...");
+        _startPolling();
+      }
+      notifyListeners();
+    });
+  }
+
   void _startPolling() {
+    debugPrint("Provider: Starting polling...");
     _pollingTimer?.cancel();
-    // Poll every 5 seconds using explicit Read from FF02
+    // Poll every 5 seconds by re-requesting data
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      await _readData();
+      await _requestInitialData();
     });
 
     // Request initial data
@@ -106,16 +133,6 @@ class BmsProvider extends ChangeNotifier {
   void _stopPolling() {
     _pollingTimer?.cancel();
     _pollingTimer = null;
-  }
-
-  Future<void> _readData() async {
-    try {
-      // Read from FF02
-      final data = await _bleService.read();
-      _handleResponse(data);
-    } catch (e) {
-      debugPrint("Read error: $e");
-    }
   }
 
   // Handle incoming data (shared by notify and manual read)
@@ -149,6 +166,7 @@ class BmsProvider extends ChangeNotifier {
   }
 
   Future<void> _requestInitialData() async {
+    debugPrint("Provider: Requesting initial data...");
     try {
       // Request base info
       final baseInfoPacket = BmsProtocol.createReadPacket(

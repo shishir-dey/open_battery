@@ -1,7 +1,7 @@
 /*
  * Open Battery (Generic Chinese BMS Companion App)
  * File: lib/services/ble_service.dart
- * Description: Service class for handling Bluetooth Low Energy (BLE) communication with BMS devices, including authentication and data streaming.
+ * Description: Service class for handling Bluetooth Low Energy (BLE) communication with BMS devices.
  * Author: Shishir Dey
  * License: MIT
  */
@@ -11,15 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../protocol/bms_protocol.dart';
 
-enum AuthState {
-  notAuthenticated,
-  sendingAppKey,
-  requestingRandom,
-  sendingPassword,
-  requestingRootRandom,
-  sendingRootPassword,
-  authenticated,
-}
+enum AuthState { notAuthenticated, authenticated }
 
 class BleService {
   static final BleService _instance = BleService._internal();
@@ -31,29 +23,13 @@ class BleService {
   BluetoothCharacteristic? _txCharacteristic;
   StreamSubscription? _notificationSubscription;
 
+  // Packet assembly buffer for handling fragmented BLE notifications
+  List<int> _frameBuffer = [];
+  int _expectedLength = 0;
+  static const int _maxBufferSize = 100;
+
   // Auth State
   AuthState _authState = AuthState.notAuthenticated;
-  int _randomByte = 0;
-  final String _password = "123123"; // Default user password
-
-  // Standard JBD Root Password
-  final List<int> _rootPassword = [
-    0x4a,
-    0x42,
-    0x44,
-    0x62,
-    0x74,
-    0x70,
-    0x77,
-    0x64,
-    0x21,
-    0x40,
-    0x23,
-    0x32,
-    0x30,
-    0x32,
-    0x33,
-  ]; // "JBDbtpwd!@#2023"
 
   // UUIDs
   final String serviceUuid = "0000ff00-0000-1000-8000-00805f9b34fb";
@@ -63,7 +39,7 @@ class BleService {
   Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
   Stream<bool> get isScanning => FlutterBluePlus.isScanning;
 
-  // Expose parsed data stream (only when authenticated)
+  // Expose parsed data stream
   final _dataController = StreamController<List<int>>.broadcast();
   Stream<List<int>> get responseStream => _dataController.stream;
 
@@ -72,13 +48,27 @@ class BleService {
   Stream<bool> get authStatusStream => _authStatusController.stream;
 
   Future<void> startScan() async {
-    if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
-      // logic to wait for bt
+    try {
+      final adapterState = await FlutterBluePlus.adapterState
+          .where((s) => s != BluetoothAdapterState.unknown)
+          .first
+          .timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => BluetoothAdapterState.on,
+          );
+
+      if (adapterState != BluetoothAdapterState.on) {
+        debugPrint("BleService: Bluetooth is not on, state: $adapterState");
+      }
+
+      await FlutterBluePlus.startScan(
+        withServices: [Guid(serviceUuid)],
+        timeout: const Duration(seconds: 10),
+      );
+    } catch (e) {
+      debugPrint("BleService: Error starting scan: $e");
+      rethrow;
     }
-    await FlutterBluePlus.startScan(
-      withServices: [Guid(serviceUuid)],
-      timeout: const Duration(seconds: 10),
-    );
   }
 
   Future<void> stopScan() async {
@@ -87,7 +77,6 @@ class BleService {
 
   Future<void> connect(BluetoothDevice device) async {
     _connectedDevice = device;
-    // Reset state
     _authState = AuthState.notAuthenticated;
     _authStatusController.add(false);
 
@@ -124,8 +113,15 @@ class BleService {
       _handleIncomingData(data);
     });
 
-    // Start Authentication
-    _startAuthentication();
+    // Skip authentication - this BMS doesn't respond to auth packets
+    debugPrint("⚠️  Skipping authentication - BMS accepts direct commands");
+    _authState = AuthState.authenticated;
+
+    // Small delay to ensure provider is subscribed
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    debugPrint("📡 Marking as authenticated");
+    _authStatusController.add(true);
   }
 
   Future<void> disconnect() async {
@@ -135,17 +131,20 @@ class BleService {
     _rxCharacteristic = null;
     _txCharacteristic = null;
     _authState = AuthState.notAuthenticated;
+    _resetBuffer();
   }
 
   Future<void> write(List<int> data) async {
-    if (_txCharacteristic == null) return;
-    if (_authState != AuthState.authenticated) {
-      debugPrint("Warning: Writing before authenticated");
+    if (_txCharacteristic == null) {
+      debugPrint("❌ TX characteristic is null!");
+      return;
     }
-    await _txCharacteristic!.write(
-      data,
-      withoutResponse: true,
-    ); // usually WriteNoResp
+
+    debugPrint(
+      "📤 TX: ${data.map((b) => b.toRadixString(16).toUpperCase().padLeft(2, '0')).join(' ')}",
+    );
+
+    await _txCharacteristic!.write(data, withoutResponse: true);
   }
 
   Future<List<int>> read() async {
@@ -159,156 +158,81 @@ class BleService {
   }
 
   void _handleIncomingData(List<int> data) {
-    try {
-      // Check for Auth Packet
-      if (data.length >= 4 && data[0] == 0xFF && data[1] == 0xAA) {
-        _handleAuthResponse(data);
-        return;
-      }
+    debugPrint(
+      "📥 RX: ${data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ').toUpperCase()}",
+    );
 
+    try {
       // Check for Standard Packet
       if (data.length >= 7 && data[0] == 0xDD && data.last == 0x77) {
-        if (_authState == AuthState.authenticated) {
-          _dataController.add(data);
+        int status = data[2];
+        debugPrint(
+          "   Type: STANDARD, Status: 0x${status.toRadixString(16).toUpperCase()}",
+        );
+
+        if (status == 0x80) {
+          debugPrint(
+            "   ⚠️  Status 0x80 - Command rejected (may need auth or invalid)",
+          );
+        } else if (status == 0x00) {
+          debugPrint("   ✅ Status 0x00 - Success");
         }
+
+        _assemblePacket(data);
         return;
       }
+
+      // May be fragmented - try to assemble
+      debugPrint("   Type: Fragment or unknown");
+      _assemblePacket(data);
     } catch (e) {
-      debugPrint("Error handling data: $e");
+      debugPrint("❌ Error handling data: $e");
+      _resetBuffer();
     }
   }
 
-  void _startAuthentication() {
-    debugPrint("Starting Authentication...");
-    _authState = AuthState.sendingAppKey;
-    // Send App Key: 00 00 00 00
-    // Packet: FF AA 15 06 30 30 30 30 30 30 CRC
-    // Wait, C++ sends `0x30 0x30...` which is ASCII '0'.
-    // C++: frame[4..9] = 0x30.
-    List<int> appKeyData = List.filled(6, 0x30);
-    _sendAuthCommand(BmsProtocol.AUTH_CMD_SEND_APP_KEY, appKeyData);
-  }
-
-  void _handleAuthResponse(List<int> packet) {
-    int command = packet[2];
-    int length = packet[3];
-    List<int> data = (packet.length >= 4 + length)
-        ? packet.sublist(4, 4 + length)
-        : [];
-
-    debugPrint("Auth Response: Cmd=${command.toRadixString(16)} Data=$data");
-
-    switch (command) {
-      case BmsProtocol.AUTH_CMD_SEND_APP_KEY:
-        if (data.isNotEmpty && data[0] == 0x00) {
-          // OK, need pwd
-          _authState = AuthState.requestingRandom;
-          _sendAuthCommand(BmsProtocol.AUTH_CMD_GET_RANDOM, []);
-        } else if (data.isNotEmpty && data[0] == 0x02) {
-          // OK, no pwd
-          _onAuthenticated();
-        } else {
-          debugPrint("Auth Failed: App Key Rejected");
-        }
-        break;
-
-      case BmsProtocol.AUTH_CMD_GET_RANDOM:
-        if (data.isNotEmpty) {
-          _randomByte = data[0];
-          if (_authState == AuthState.requestingRandom) {
-            _sendUserPassword();
-          } else if (_authState == AuthState.requestingRootRandom) {
-            _sendRootPassword();
-          }
-        }
-        break;
-
-      case BmsProtocol.AUTH_CMD_SEND_PASSWORD:
-        if (data.isNotEmpty && data[0] == 0x00) {
-          // User Pwd OK, Try Root Pwd
-          _authState = AuthState.requestingRootRandom;
-          _sendAuthCommand(BmsProtocol.AUTH_CMD_GET_RANDOM, []);
-        } else {
-          debugPrint("Auth Failed: User Password Rejected");
-        }
-        break;
-
-      case BmsProtocol.AUTH_CMD_SEND_ROOT_PASSWORD:
-        if (data.isNotEmpty && data[0] == 0x00) {
-          _onAuthenticated();
-        } else {
-          debugPrint("Auth Failed: Root Password Rejected");
-        }
-        break;
-    }
-  }
-
-  void _sendUserPassword() {
-    _authState = AuthState.sendingPassword;
-    // Encrypt Password
-    // Password bytes XOR MAC bytes + Random
-    // Need MAC address... FlutterBluePlus device.remoteId is the MAC.
-    // E.g. "A4:C1:38:..."
-    List<int> macBytes = _getMacBytes(_connectedDevice!.remoteId.str);
-    List<int> pwdBytes = _password.codeUnits;
-
-    // Pad pwd to 6 bytes if needed (assumed 123123 is 6 bytes)
-
-    List<int> encrypted = [];
-    for (int i = 0; i < 6; i++) {
-      int macByte = (i < macBytes.length) ? macBytes[i] : 0;
-      int pwdByte = (i < pwdBytes.length)
-          ? pwdBytes[i]
-          : 0; // Or '0' char? C++: string[i]
-      int enc = ((macByte ^ pwdByte) + _randomByte) & 0xFF;
-      encrypted.add(enc);
+  void _assemblePacket(List<int> data) {
+    // Buffer overflow protection
+    if (_frameBuffer.length + data.length > _maxBufferSize) {
+      debugPrint("⚠️  Buffer overflow, resetting");
+      _resetBuffer();
     }
 
-    _sendAuthCommand(BmsProtocol.AUTH_CMD_SEND_PASSWORD, encrypted);
-  }
+    // Check if this is a new packet
+    bool isNewFrame = data.length >= 3 && data[0] == 0xDD && data[2] == 0x00;
 
-  void _sendRootPassword() {
-    _authState = AuthState.sendingRootPassword;
-    List<int> macBytes = _getMacBytes(_connectedDevice!.remoteId.str);
-    List<int> encrypted = [];
-
-    for (int i = 0; i < _rootPassword.length; i++) {
-      int macByte = (i < 6) ? macBytes[i] : 0;
-      int pwdByte = _rootPassword[i];
-      int enc = ((macByte ^ pwdByte) + _randomByte) & 0xFF;
-      encrypted.add(enc);
-    }
-
-    _sendAuthCommand(BmsProtocol.AUTH_CMD_SEND_ROOT_PASSWORD, encrypted);
-  }
-
-  void _onAuthenticated() {
-    debugPrint("Authentication Successful!");
-    _authState = AuthState.authenticated;
-    _authStatusController.add(true);
-
-    // Trigger initial read
-    // sendCommand(BmsProtocol.createReadPacket(BmsProtocol.CMD_READ_BASE_INFO));
-    // But user of this service should drive this.
-  }
-
-  void _sendAuthCommand(int command, List<int> data) async {
-    List<int> packet = BmsProtocol.createAuthPacket(command, data);
-    if (_txCharacteristic != null) {
-      await _txCharacteristic!.write(packet, withoutResponse: true);
-    }
-  }
-
-  List<int> _getMacBytes(String id) {
-    // ID: "A4:C1:38:..." or "A4C138..."
-    // Extract hex bytes.
-    String clean = id.replaceAll(":", "").replaceAll("-", "");
-    List<int> bytes = [];
-    for (int i = 0; i < clean.length; i += 2) {
-      if (i + 2 <= clean.length) {
-        bytes.add(int.parse(clean.substring(i, i + 2), radix: 16));
+    if (isNewFrame) {
+      _frameBuffer.clear();
+      if (data.length >= 4) {
+        _expectedLength = data[3];
       }
     }
-    return bytes;
+
+    _frameBuffer.addAll(data);
+
+    // Check if we have a complete packet
+    int expectedTotalLength = _expectedLength + 7;
+
+    if (_frameBuffer.length >= 7 &&
+        _frameBuffer[0] == 0xDD &&
+        _frameBuffer.length >= expectedTotalLength) {
+      if (_frameBuffer[expectedTotalLength - 1] == 0x77) {
+        List<int> completePacket = _frameBuffer.sublist(0, expectedTotalLength);
+        debugPrint(
+          "✅ Complete packet assembled (${completePacket.length} bytes)",
+        );
+        _dataController.add(completePacket);
+        _resetBuffer();
+      } else if (_frameBuffer.last == 0x77) {
+        debugPrint("✅ Found tail at end, forwarding");
+        _dataController.add(List<int>.from(_frameBuffer));
+        _resetBuffer();
+      }
+    }
+  }
+
+  void _resetBuffer() {
+    _frameBuffer.clear();
+    _expectedLength = 0;
   }
 }

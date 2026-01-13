@@ -7,6 +7,7 @@
  */
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'scan_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -26,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
 
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
 
@@ -37,8 +38,8 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate after 1 second
-    Future.delayed(const Duration(milliseconds: 1000), () {
+    // Navigate quickly after animation
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           CupertinoPageRoute(builder: (context) => const ScanScreen()),
@@ -55,8 +56,13 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Get current brightness from app theme (not system) to avoid flash on startup
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.white,
+      // Use system theme colors
+      backgroundColor: isDark ? CupertinoColors.black : CupertinoColors.white,
       child: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -67,7 +73,9 @@ class _SplashScreenState extends State<SplashScreen>
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: CupertinoColors.systemGrey4.withValues(alpha: 0.2),
+                  color: isDark
+                      ? CupertinoColors.black.withValues(alpha: 0.5)
+                      : CupertinoColors.systemGrey4.withValues(alpha: 0.2),
                   blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),

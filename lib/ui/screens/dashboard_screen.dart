@@ -20,12 +20,15 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+
     return Consumer<BmsProvider>(
       builder: (context, provider, child) {
+        debugPrint("Dashboard: Build called, baseInfo: ${provider.baseInfo}");
         final info = provider.baseInfo;
 
         return Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: AppTheme.getBackground(context),
           body: Stack(
             children: [
               // ambient glow
@@ -39,7 +42,9 @@ class DashboardScreen extends StatelessWidget {
                     height: 300,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppTheme.systemBlue.withValues(alpha: 0.2),
+                      color: AppTheme.getPrimary(
+                        context,
+                      ).withValues(alpha: 0.2),
                       backgroundBlendMode: BlendMode.screen,
                     ),
                   ),
@@ -55,7 +60,9 @@ class DashboardScreen extends StatelessWidget {
                     height: 300,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppTheme.systemGreen.withValues(alpha: 0.15),
+                      color: AppTheme.getSuccess(
+                        context,
+                      ).withValues(alpha: 0.15),
                       backgroundBlendMode: BlendMode.screen,
                     ),
                   ),
@@ -75,14 +82,14 @@ class DashboardScreen extends StatelessWidget {
                           children: [
                             Text(
                               provider.device?.platformName ?? "BMS",
-                              style: AppTheme.title2,
+                              style: AppTheme.title2Style(context),
                             ),
                             Row(
                               children: [
                                 IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.grid_view,
-                                    color: Colors.white,
+                                    color: AppTheme.getTextPrimary(context),
                                   ),
                                   onPressed: () => Navigator.push(
                                     context,
@@ -92,9 +99,9 @@ class DashboardScreen extends StatelessWidget {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.power_settings_new,
-                                    color: AppTheme.systemRed,
+                                    color: AppTheme.getError(context),
                                   ),
                                   onPressed: () {
                                     provider.disconnect();
@@ -128,12 +135,14 @@ class DashboardScreen extends StatelessWidget {
                                 alignment: Alignment.center,
                                 children: [
                                   // BG Ring
-                                  const SizedBox(
+                                  SizedBox(
                                     width: 180,
                                     height: 180,
                                     child: CircularProgressIndicator(
                                       value: 1.0,
-                                      color: Color(0xFF1C1C1E),
+                                      color: isDark
+                                          ? const Color(0xFF1C1C1E)
+                                          : const Color(0xFFE5E5EA),
                                       strokeWidth: 16,
                                     ),
                                   ),
@@ -154,6 +163,7 @@ class DashboardScreen extends StatelessWidget {
                                           CircularProgressIndicator(
                                             value: value,
                                             color: _getSocColor(
+                                              context,
                                               info?.rsoc ?? 0,
                                             ),
                                             strokeWidth: 16,
@@ -167,10 +177,11 @@ class DashboardScreen extends StatelessWidget {
                                     children: [
                                       Text(
                                         info != null ? "${info.rsoc}%" : "--%",
-                                        style: AppTheme.largeValue.copyWith(
-                                          fontSize: 42,
-                                          fontWeight: FontWeight.w200,
-                                        ),
+                                        style: AppTheme.largeValueStyle(context)
+                                            .copyWith(
+                                              fontSize: 42,
+                                              fontWeight: FontWeight.w200,
+                                            ),
                                       ),
                                       const SizedBox(height: 4),
                                       Container(
@@ -180,6 +191,7 @@ class DashboardScreen extends StatelessWidget {
                                         ),
                                         decoration: BoxDecoration(
                                           color: _getStatusColor(
+                                            context,
                                             info,
                                           ).withValues(alpha: 0.2),
                                           borderRadius: BorderRadius.circular(
@@ -187,6 +199,7 @@ class DashboardScreen extends StatelessWidget {
                                           ),
                                           border: Border.all(
                                             color: _getStatusColor(
+                                              context,
                                               info,
                                             ).withValues(alpha: 0.5),
                                             width: 1,
@@ -194,11 +207,15 @@ class DashboardScreen extends StatelessWidget {
                                         ),
                                         child: Text(
                                           _getStatusText(info),
-                                          style: AppTheme.label.copyWith(
-                                            color: _getStatusColor(info),
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                          style: AppTheme.labelStyle(context)
+                                              .copyWith(
+                                                color: _getStatusColor(
+                                                  context,
+                                                  info,
+                                                ),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                         ),
                                       ),
                                     ],
@@ -212,41 +229,46 @@ class DashboardScreen extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
                                 _buildQuickInfo(
+                                  context,
                                   "Power",
                                   info != null
                                       ? "${(info.totalVoltage * info.current).abs().toStringAsFixed(0)}W"
                                       : "--W",
-                                  Colors.white,
+                                  AppTheme.getTextPrimary(context),
                                 ),
                                 Container(
                                   width: 1,
                                   height: 30,
-                                  color: Colors.white10,
+                                  color: AppTheme.getDividerColor(context),
                                 ),
                                 _buildQuickInfo(
+                                  context,
                                   "Current",
                                   info != null
                                       ? "${info.current.toStringAsFixed(1)}A"
                                       : "--A",
                                   info != null
                                       ? (info.current > 0
-                                            ? AppTheme.success
+                                            ? AppTheme.getSuccess(context)
                                             : (info.current < 0
-                                                  ? AppTheme.error
-                                                  : Colors.white))
-                                      : Colors.white,
+                                                  ? AppTheme.getError(context)
+                                                  : AppTheme.getTextPrimary(
+                                                      context,
+                                                    )))
+                                      : AppTheme.getTextPrimary(context),
                                 ),
                                 Container(
                                   width: 1,
                                   height: 30,
-                                  color: Colors.white10,
+                                  color: AppTheme.getDividerColor(context),
                                 ),
                                 _buildQuickInfo(
+                                  context,
                                   "Voltage",
                                   info != null
                                       ? "${info.totalVoltage.toStringAsFixed(1)}V"
                                       : "--V",
-                                  AppTheme.systemBlue,
+                                  AppTheme.getPrimary(context),
                                 ),
                               ],
                             ),
@@ -266,32 +288,36 @@ class DashboardScreen extends StatelessWidget {
                         childAspectRatio: 1.6,
                         children: [
                           _buildStatCard(
+                            context,
                             "Rem. Cap",
                             info != null
                                 ? "${info.remainingCapacity.toStringAsFixed(2)}Ah"
                                 : "--Ah",
                             Icons.battery_full,
-                            AppTheme.systemGreen,
+                            AppTheme.getSuccess(context),
                           ),
                           _buildStatCard(
+                            context,
                             "Temp",
                             (info != null && info.temperatures.isNotEmpty)
                                 ? "${info.temperatures.first.toStringAsFixed(1)}°C"
                                 : "--",
                             Icons.thermostat,
-                            Colors.orange,
+                            AppTheme.getWarning(context),
                           ),
                           _buildStatCard(
+                            context,
                             "Cycles",
                             info != null ? "${info.cycleCount}" : "--",
                             Icons.refresh,
                             Colors.blueGrey,
                           ),
                           _buildStatCard(
+                            context,
                             "SoH",
                             "${100}%", // Placeholder for now
                             Icons.health_and_safety,
-                            AppTheme.systemBlue,
+                            AppTheme.getPrimary(context),
                           ),
                         ],
                       ),
@@ -307,16 +333,16 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Color _getSocColor(int rsoc) {
-    if (rsoc > 20) return AppTheme.success;
-    return AppTheme.error;
+  Color _getSocColor(BuildContext context, int rsoc) {
+    if (rsoc > 20) return AppTheme.getSuccess(context);
+    return AppTheme.getError(context);
   }
 
-  Color _getStatusColor(dynamic info) {
-    if (info == null) return AppTheme.systemBlue;
-    if (info.isCharging) return AppTheme.success;
-    if (info.isDischarging) return AppTheme.error;
-    return AppTheme.textSecondary;
+  Color _getStatusColor(BuildContext context, dynamic info) {
+    if (info == null) return AppTheme.getPrimary(context);
+    if (info.isCharging) return AppTheme.getSuccess(context);
+    if (info.isDischarging) return AppTheme.getError(context);
+    return AppTheme.getTextSecondary(context);
   }
 
   String _getStatusText(dynamic info) {
@@ -326,19 +352,27 @@ class DashboardScreen extends StatelessWidget {
     return "IDLE";
   }
 
-  Widget _buildQuickInfo(String label, String value, Color color) {
+  Widget _buildQuickInfo(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+  ) {
     return Column(
       children: [
         Text(
           value,
-          style: AppTheme.title2.copyWith(color: color, fontSize: 18),
+          style: AppTheme.title2Style(
+            context,
+          ).copyWith(color: color, fontSize: 18),
         ),
-        Text(label, style: AppTheme.label.copyWith(fontSize: 11)),
+        Text(label, style: AppTheme.labelStyle(context).copyWith(fontSize: 11)),
       ],
     );
   }
 
   Widget _buildStatCard(
+    BuildContext context,
     String title,
     String value,
     IconData icon,
@@ -353,11 +387,14 @@ class DashboardScreen extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: accent),
               const SizedBox(width: 8),
-              Text(title, style: AppTheme.label),
+              Text(title, style: AppTheme.labelStyle(context)),
             ],
           ),
           const Spacer(),
-          Text(value, style: AppTheme.largeValue.copyWith(fontSize: 28)),
+          Text(
+            value,
+            style: AppTheme.largeValueStyle(context).copyWith(fontSize: 28),
+          ),
         ],
       ),
     );

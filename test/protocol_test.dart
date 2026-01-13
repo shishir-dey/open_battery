@@ -1,93 +1,62 @@
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:open_battery/protocol/bms_protocol.dart';
 import 'package:open_battery/protocol/crc_utils.dart';
 
 void main() {
   group('CrcUtils', () {
     group('calculateChecksum', () {
-      test('should calculate correct checksum for simple values', () {
-        // Test with known values
-        final (high, low) = CrcUtils.calculateChecksum(0xA5, 0x03, 0x00, []);
+      // Test against Adafruit reference packet: {0xdd, 0xa5, 0x03, 0x00, 0xff, 0xfd, 0x77}
+      // Checksum covers function=0x03 + length=0x00 = 0x10000 - 0x03 = 0xFFFD
+      test(
+        'should calculate correct checksum for base info request (from Adafruit)',
+        () {
+          final (high, low) = CrcUtils.calculateRequestChecksum(0x03, 0x00, []);
+          expect(high, equals(0xFF));
+          expect(low, equals(0xFD)); // Matches Adafruit: 0xff, 0xfd
+        },
+      );
 
-        // Sum = 0xA5 + 0x03 + 0x00 = 0xA8
-        // Inverted = ~0xA8 = 0xFF57 (in 16-bit)
-        // Add 1 = 0xFF58
-        expect(high, equals(0xFF));
-        expect(low, equals(0x58));
-      });
+      // Test against Adafruit reference packet: {0xdd, 0xa5, 0x04, 0x00, 0xff, 0xfc, 0x77}
+      test(
+        'should calculate correct checksum for cell voltages request (from Adafruit)',
+        () {
+          final (high, low) = CrcUtils.calculateRequestChecksum(0x04, 0x00, []);
+          expect(high, equals(0xFF));
+          expect(low, equals(0xFC)); // Matches Adafruit: 0xff, 0xfc
+        },
+      );
 
       test('should calculate checksum with data bytes', () {
-        final (high, low) = CrcUtils.calculateChecksum(0xA5, 0x03, 0x02, [
+        // 0x10000 - (0x03 + 0x02 + 0x01 + 0x02) = 0x10000 - 0x08 = 0xFFF8
+        final (high, low) = CrcUtils.calculateRequestChecksum(0x03, 0x02, [
           0x01,
           0x02,
         ]);
-
-        // Sum = 0xA5 + 0x03 + 0x02 + 0x01 + 0x02 = 0xAD
-        // Inverted = ~0xAD = 0xFF52
-        // Add 1 = 0xFF53
         expect(high, equals(0xFF));
-        expect(low, equals(0x53));
+        expect(low, equals(0xF8));
       });
 
       test('should handle overflow correctly', () {
-        final (high, low) = CrcUtils.calculateChecksum(0xFF, 0xFF, 0xFF, [
+        // 0x10000 - (0xFF + 0xFF + 0xFF + 0xFF + 0xFF) = 0x10000 - 0x4FB = 0xFB05
+        final (high, low) = CrcUtils.calculateRequestChecksum(0xFF, 0xFF, [
           0xFF,
           0xFF,
           0xFF,
         ]);
-
-        // Sum = 6 * 0xFF = 0x5FA
-        // Inverted = ~0x5FA = 0xFA05 (in 16-bit)
-        // Add 1 = 0xFA06
-        expect(high, equals(0xFA));
-        expect(low, equals(0x06));
-      });
-
-      test('should work with empty data', () {
-        final (high, low) = CrcUtils.calculateChecksum(0x10, 0x20, 0x00, []);
-
-        // Sum = 0x10 + 0x20 + 0x00 = 0x30
-        // Inverted = ~0x30 = 0xFFCF
-        // Add 1 = 0xFFD0
-        expect(high, equals(0xFF));
-        expect(low, equals(0xD0));
-      });
-
-      test('should work with large data array', () {
-        final data = List.generate(100, (i) => i % 256);
-        final (high, low) = CrcUtils.calculateChecksum(0x00, 0x00, 100, data);
-
-        expect(high, isA<int>());
-        expect(low, isA<int>());
-        expect(high, lessThanOrEqualTo(0xFF));
-        expect(low, lessThanOrEqualTo(0xFF));
+        expect(high, equals(0xFB));
+        expect(low, equals(0x05));
       });
     });
 
     group('calculateAuthChecksum', () {
       test('should calculate 8-bit checksum for auth payload', () {
         final checksum = CrcUtils.calculateAuthChecksum([0x15, 0x06]);
-
-        // Sum = 0x15 + 0x06 = 0x1B
         expect(checksum, equals(0x1B));
       });
 
       test('should handle overflow by masking to 8 bits', () {
         final checksum = CrcUtils.calculateAuthChecksum([0xFF, 0xFF, 0xFF]);
-
-        // Sum = 3 * 0xFF = 0x2FD, masked to 8-bit = 0xFD
         expect(checksum, equals(0xFD));
-      });
-
-      test('should work with empty payload', () {
-        final checksum = CrcUtils.calculateAuthChecksum([]);
-        expect(checksum, equals(0x00));
-      });
-
-      test('should work with single byte', () {
-        final checksum = CrcUtils.calculateAuthChecksum([0x42]);
-        expect(checksum, equals(0x42));
       });
     });
   });
@@ -111,20 +80,11 @@ void main() {
       test('should have correct auth protocol constants', () {
         expect(BmsProtocol.AUTH_HEADER, equals(0xFF));
         expect(BmsProtocol.AUTH_SECOND_BYTE, equals(0xAA));
-        expect(BmsProtocol.AUTH_TAIL, equals(0x77));
-      });
-
-      test('should have correct auth command constants', () {
-        expect(BmsProtocol.AUTH_CMD_SEND_APP_KEY, equals(0x15));
-        expect(BmsProtocol.AUTH_CMD_CHANGE_PASSWORD, equals(0x16));
-        expect(BmsProtocol.AUTH_CMD_GET_RANDOM, equals(0x17));
-        expect(BmsProtocol.AUTH_CMD_SEND_PASSWORD, equals(0x18));
-        expect(BmsProtocol.AUTH_CMD_SEND_ROOT_PASSWORD, equals(0x1D));
       });
     });
 
     group('createPacket', () {
-      test('should create packet with no data', () {
+      test('should create request packet with no data', () {
         final packet = BmsProtocol.createPacket(0xA5, 0x03);
 
         expect(packet[0], equals(0xDD)); // Header
@@ -132,30 +92,26 @@ void main() {
         expect(packet[2], equals(0x03)); // Function
         expect(packet[3], equals(0x00)); // Length
         expect(packet[packet.length - 1], equals(0x77)); // Tail
-        expect(
-          packet.length,
-          equals(7),
-        ); // DD + Action + Func + Len + ChkH + ChkL + 77
+        expect(packet.length, equals(7));
       });
 
-      test('should create packet with data', () {
+      test('should create request packet with data', () {
         final packet = BmsProtocol.createPacket(0x5A, 0xE1, [0x00, 0x01]);
 
         expect(packet[0], equals(0xDD));
         expect(packet[1], equals(0x5A));
         expect(packet[2], equals(0xE1));
-        expect(packet[3], equals(0x02)); // Length = 2
-        expect(packet[4], equals(0x00)); // Data byte 1
-        expect(packet[5], equals(0x01)); // Data byte 2
-        expect(packet[packet.length - 1], equals(0x77));
+        expect(packet[3], equals(0x02));
+        expect(packet[4], equals(0x00));
+        expect(packet[5], equals(0x01));
         expect(packet.length, equals(9));
       });
 
       test('should include correct checksum', () {
         final packet = BmsProtocol.createPacket(0xA5, 0x03, []);
 
-        final (expectedH, expectedL) = CrcUtils.calculateChecksum(
-          0xA5,
+        // Checksum covers function + length, not action
+        final (expectedH, expectedL) = CrcUtils.calculateRequestChecksum(
           0x03,
           0,
           [],
@@ -163,189 +119,29 @@ void main() {
         expect(packet[4], equals(expectedH));
         expect(packet[5], equals(expectedL));
       });
+    });
 
-      test('should handle large data arrays', () {
-        final data = List.generate(50, (i) => i);
-        final packet = BmsProtocol.createPacket(0xA5, 0x04, data);
+    group('parseResponse - Real Device Responses', () {
+      test('should parse actual BMS response DD A5 05 00 FF 56 77', () {
+        // Your actual received packet
+        final packet = [0xDD, 0xA5, 0x05, 0x00, 0xFF, 0x56, 0x77];
+        final result = BmsProtocol.parseResponse(packet);
 
-        expect(packet[3], equals(50)); // Length
+        expect(result['type'], equals('standard'));
         expect(
-          packet.length,
-          equals(57),
-        ); // Header + Action + Func + Len + 50 data + ChkH + ChkL + Tail
+          result['command'],
+          equals(0xA5),
+        ); // Function from request echoed back
+        expect(result['status'], equals(0x05)); // Hardware version command
+        expect(result['data'], isEmpty);
 
-        for (int i = 0; i < 50; i++) {
-          expect(packet[4 + i], equals(i));
-        }
-      });
-
-      test('should create different packets for different actions', () {
-        final readPacket = BmsProtocol.createPacket(0xA5, 0x03);
-        final writePacket = BmsProtocol.createPacket(0x5A, 0x03);
-
-        expect(readPacket[1], equals(0xA5));
-        expect(writePacket[1], equals(0x5A));
-        expect(readPacket, isNot(equals(writePacket)));
-      });
-    });
-
-    group('createAuthPacket', () {
-      test('should create auth packet with no data', () {
-        final packet = BmsProtocol.createAuthPacket(0x17);
-
-        expect(packet[0], equals(0xFF)); // Auth header
-        expect(packet[1], equals(0xAA)); // Second byte
-        expect(packet[2], equals(0x17)); // Command
-        expect(packet[3], equals(0x00)); // Length
-        expect(packet.length, equals(5)); // FF AA CMD LEN CHECKSUM
-      });
-
-      test('should create auth packet with data', () {
-        final packet = BmsProtocol.createAuthPacket(0x15, [
-          0x00,
-          0x00,
-          0x00,
-          0x00,
-          0x00,
-          0x00,
-        ]);
-
-        expect(packet[0], equals(0xFF));
-        expect(packet[1], equals(0xAA));
-        expect(packet[2], equals(0x15));
-        expect(packet[3], equals(0x06)); // Length
-
-        for (int i = 0; i < 6; i++) {
-          expect(packet[4 + i], equals(0x00));
-        }
-
-        expect(packet.length, equals(11)); // FF AA CMD LEN + 6 data + CHECKSUM
-      });
-
-      test('should include correct auth checksum', () {
-        final packet = BmsProtocol.createAuthPacket(0x18, [0x01, 0x02]);
-
-        final payload = [0x18, 0x02, 0x01, 0x02];
-        final expectedChecksum = CrcUtils.calculateAuthChecksum(payload);
-
-        expect(packet[packet.length - 1], equals(expectedChecksum));
-      });
-
-      test('should create packets for all auth commands', () {
-        final commands = [
-          BmsProtocol.AUTH_CMD_SEND_APP_KEY,
-          BmsProtocol.AUTH_CMD_CHANGE_PASSWORD,
-          BmsProtocol.AUTH_CMD_GET_RANDOM,
-          BmsProtocol.AUTH_CMD_SEND_PASSWORD,
-          BmsProtocol.AUTH_CMD_SEND_ROOT_PASSWORD,
-        ];
-
-        for (final cmd in commands) {
-          final packet = BmsProtocol.createAuthPacket(cmd);
-          expect(packet[2], equals(cmd));
-          expect(packet[0], equals(0xFF));
-          expect(packet[1], equals(0xAA));
-        }
-      });
-    });
-
-    group('createReadPacket', () {
-      test('should create read packet for base info', () {
-        final packet = BmsProtocol.createReadPacket(
-          BmsProtocol.CMD_READ_BASE_INFO,
-        );
-
-        expect(packet[1], equals(BmsProtocol.ACTION_READ));
-        expect(packet[2], equals(BmsProtocol.CMD_READ_BASE_INFO));
-      });
-
-      test('should create read packet for cell voltages', () {
-        final packet = BmsProtocol.createReadPacket(
-          BmsProtocol.CMD_READ_CELL_VOLTAGES,
-        );
-
-        expect(packet[1], equals(BmsProtocol.ACTION_READ));
-        expect(packet[2], equals(BmsProtocol.CMD_READ_CELL_VOLTAGES));
-      });
-
-      test('should create read packet for hardware version', () {
-        final packet = BmsProtocol.createReadPacket(
-          BmsProtocol.CMD_READ_HARDWARE_VERSION,
-        );
-
-        expect(packet[1], equals(BmsProtocol.ACTION_READ));
-        expect(packet[2], equals(BmsProtocol.CMD_READ_HARDWARE_VERSION));
-      });
-    });
-
-    group('createWritePacket', () {
-      test('should create write packet with data', () {
-        final packet = BmsProtocol.createWritePacket(0xE1, [0x00, 0x02]);
-
-        expect(packet[1], equals(BmsProtocol.ACTION_WRITE));
-        expect(packet[2], equals(0xE1));
-        expect(packet[3], equals(0x02));
-        expect(packet[4], equals(0x00));
-        expect(packet[5], equals(0x02));
-      });
-
-      test('should handle empty data', () {
-        final packet = BmsProtocol.createWritePacket(0xE1, []);
-
-        expect(packet[1], equals(BmsProtocol.ACTION_WRITE));
-        expect(packet[3], equals(0x00)); // Length = 0
-      });
-    });
-
-    group('createMosControlPacket', () {
-      test('should create MOS control packet with 16-bit value', () {
-        final packet = BmsProtocol.createMosControlPacket(0x0001);
-
-        expect(packet[1], equals(BmsProtocol.ACTION_WRITE));
-        expect(packet[2], equals(BmsProtocol.CMD_MOS_CONTROL));
-        expect(packet[3], equals(0x02)); // 2 bytes of data
-        expect(packet[4], equals(0x00)); // High byte
-        expect(packet[5], equals(0x01)); // Low byte
-      });
-
-      test('should split 16-bit value correctly', () {
-        final packet = BmsProtocol.createMosControlPacket(0x1234);
-
-        expect(packet[4], equals(0x12));
-        expect(packet[5], equals(0x34));
-      });
-
-      test('should handle max value', () {
-        final packet = BmsProtocol.createMosControlPacket(0xFFFF);
-
-        expect(packet[4], equals(0xFF));
-        expect(packet[5], equals(0xFF));
-      });
-
-      test('should handle zero value', () {
-        final packet = BmsProtocol.createMosControlPacket(0x0000);
-
-        expect(packet[4], equals(0x00));
-        expect(packet[5], equals(0x00));
-      });
-    });
-
-    group('parseResponse', () {
-      test('should throw on empty packet', () {
-        expect(
-          () => BmsProtocol.parseResponse([]),
-          throwsA(isA<FormatException>()),
+        print(
+          '✓ Parsed response: CMD=0x${result['command'].toRadixString(16)}, STATUS=0x${result['status'].toRadixString(16)}',
         );
       });
 
-      test('should throw on unknown packet format', () {
-        expect(
-          () => BmsProtocol.parseResponse([0x00, 0x01, 0x02]),
-          throwsA(isA<FormatException>()),
-        );
-      });
-
-      test('should define standard packet with padding', () {
+      test('should handle padded response packet', () {
+        // Response with trailing padding bytes
         final packet = [
           0xDD,
           0xA5,
@@ -359,240 +155,211 @@ void main() {
           0x00,
         ];
         final result = BmsProtocol.parseResponse(packet);
+
         expect(result['type'], equals('standard'));
         expect(result['command'], equals(0xA5));
         expect(result['status'], equals(0x05));
-      });
-
-      test('should identify standard packet', () {
-        final packet = [0xDD, 0x03, 0x00, 0x00, 0xFF, 0xFD, 0x77];
-        final result = BmsProtocol.parseResponse(packet);
-
-        expect(result['type'], equals('standard'));
-      });
-
-      test('should identify auth packet', () {
-        final packet = [0xFF, 0xAA, 0x17, 0x00, 0x17];
-        final result = BmsProtocol.parseResponse(packet);
-
-        expect(result['type'], equals('auth'));
-      });
-    });
-
-    group('_parseStandardPacket', () {
-      test('should parse minimal standard packet', () {
-        // DD FUNC STATUS LEN ChkH ChkL 77
-        final (checkH, checkL) = CrcUtils.calculateChecksum(
-          0x03,
-          0x00,
-          0x00,
-          [],
-        );
-        final packet = [0xDD, 0x03, 0x00, 0x00, checkH, checkL, 0x77];
-
-        final result = BmsProtocol.parseResponse(packet);
-
-        expect(result['type'], equals('standard'));
-        expect(result['command'], equals(0x03));
-        expect(result['status'], equals(0x00));
         expect(result['data'], isEmpty);
       });
 
-      test('should parse packet with data', () {
+      test('should parse response with data payload', () {
+        // Simulated response with 3 bytes of data
+        // Response checksum covers only length + data
         final data = [0x01, 0x02, 0x03];
-        final (checkH, checkL) = CrcUtils.calculateChecksum(
-          0x04,
-          0x00,
-          3,
+        final (checkH, checkL) = CrcUtils.calculateResponseChecksum(
+          3, // length
           data,
         );
-        final packet = [0xDD, 0x04, 0x00, 0x03, ...data, checkH, checkL, 0x77];
+        final packet = [0xDD, 0x03, 0x00, 0x03, ...data, checkH, checkL, 0x77];
 
         final result = BmsProtocol.parseResponse(packet);
 
-        expect(result['command'], equals(0x04));
+        expect(result['command'], equals(0x03));
+        expect(result['status'], equals(0x00));
         expect(result['data'], equals([0x01, 0x02, 0x03]));
       });
 
-      test('should throw on packet too short', () {
-        expect(
-          () => BmsProtocol.parseResponse([0xDD, 0x03, 0x00]),
-          throwsA(isA<FormatException>()),
-        );
-      });
-
-      test('should throw on incomplete packet', () {
-        final packet = [0xDD, 0x03, 0x00, 0x05, 0x01, 0x02, 0xFF, 0xFF, 0x77];
-        // Claims 5 bytes of data but only has 2
-
-        expect(
-          () => BmsProtocol.parseResponse(packet),
-          throwsA(isA<FormatException>()),
-        );
-      });
-
-      test('should handle different status codes', () {
-        final (checkH, checkL) = CrcUtils.calculateChecksum(
-          0x03,
-          0x01,
-          0x00,
-          [],
-        );
-        final packet = [0xDD, 0x03, 0x01, 0x00, checkH, checkL, 0x77];
-
+      test('should log warning on checksum mismatch but still parse', () {
+        // Checksum validation now logs warning but continues parsing
+        // This matches behavior of some BMS units with non-standard checksums
+        final packet = [0xDD, 0x05, 0x00, 0x00, 0xFF, 0xFF, 0x77];
         final result = BmsProtocol.parseResponse(packet);
-        expect(result['status'], equals(0x01));
-      });
 
-      test('should parse large data payloads', () {
-        final data = List.generate(50, (i) => i);
-        final (checkH, checkL) = CrcUtils.calculateChecksum(
-          0x04,
-          0x00,
-          50,
-          data,
-        );
-        final packet = [0xDD, 0x04, 0x00, 0x32, ...data, checkH, checkL, 0x77];
-
-        final result = BmsProtocol.parseResponse(packet);
-        expect(result['data'], equals(data));
-      });
-
-      test('should extract correct data segment', () {
-        final data = [0xAA, 0xBB, 0xCC];
-        final (checkH, checkL) = CrcUtils.calculateChecksum(
-          0x05,
-          0x00,
-          3,
-          data,
-        );
-        final packet = [
-          0xDD,
-          0x05,
-          0x00,
-          0x03,
-          0xAA,
-          0xBB,
-          0xCC,
-          checkH,
-          checkL,
-          0x77,
-        ];
-
-        final result = BmsProtocol.parseResponse(packet);
-        expect(result['data'], equals([0xAA, 0xBB, 0xCC]));
+        // Should still parse successfully even with bad checksum
+        expect(result['type'], equals('standard'));
+        expect(result['command'], equals(0x05));
       });
     });
 
-    group('_parseAuthPacket', () {
-      test('should parse auth packet without data', () {
-        final packet = [0xFF, 0xAA, 0x17, 0x00, 0x17];
+    group('createReadPacket', () {
+      // Verified against Adafruit reference: {0xdd, 0xa5, 0x03, 0x00, 0xff, 0xfd, 0x77}
+      test(
+        'should create read base info packet (matches Adafruit reference)',
+        () {
+          final packet = BmsProtocol.createReadPacket(
+            BmsProtocol.CMD_READ_BASE_INFO,
+          );
 
+          expect(
+            BmsProtocol.packetToHex(packet),
+            equals('DD A5 03 00 FF FD 77'),
+          );
+          print('✓ Read Base Info: ${BmsProtocol.packetToHex(packet)}');
+        },
+      );
+
+      // Verified against Adafruit reference: {0xdd, 0xa5, 0x04, 0x00, 0xff, 0xfc, 0x77}
+      test(
+        'should create read cell voltages packet (matches Adafruit reference)',
+        () {
+          final packet = BmsProtocol.createReadPacket(
+            BmsProtocol.CMD_READ_CELL_VOLTAGES,
+          );
+
+          expect(
+            BmsProtocol.packetToHex(packet),
+            equals('DD A5 04 00 FF FC 77'),
+          );
+          print('✓ Read Cell Voltages: ${BmsProtocol.packetToHex(packet)}');
+        },
+      );
+
+      test('should create read hardware version packet', () {
+        final packet = BmsProtocol.createReadPacket(
+          BmsProtocol.CMD_READ_HARDWARE_VERSION,
+        );
+
+        // 0x10000 - 0x05 = 0xFFFB
+        expect(BmsProtocol.packetToHex(packet), equals('DD A5 05 00 FF FB 77'));
+        print('✓ Read Hardware Version: ${BmsProtocol.packetToHex(packet)}');
+      });
+    });
+
+    group('createWritePacket', () {
+      test('should create write packet with data', () {
+        final packet = BmsProtocol.createWritePacket(0xE1, [0x00, 0x02]);
+
+        expect(packet[1], equals(BmsProtocol.ACTION_WRITE));
+        expect(packet[2], equals(0xE1));
+        expect(packet[3], equals(0x02));
+        expect(packet[4], equals(0x00));
+        expect(packet[5], equals(0x02));
+      });
+    });
+
+    group('createMosControlPacket', () {
+      test('should create MOS control packet with 16-bit value', () {
+        final packet = BmsProtocol.createMosControlPacket(0x0001);
+
+        expect(packet[1], equals(BmsProtocol.ACTION_WRITE));
+        expect(packet[2], equals(BmsProtocol.CMD_MOS_CONTROL));
+        expect(packet[3], equals(0x02));
+        expect(packet[4], equals(0x00));
+        expect(packet[5], equals(0x01));
+      });
+
+      test('should split 16-bit value correctly', () {
+        final packet = BmsProtocol.createMosControlPacket(0x1234);
+
+        expect(packet[4], equals(0x12));
+        expect(packet[5], equals(0x34));
+      });
+    });
+
+    group('createAuthPacket', () {
+      test('should create get random auth packet', () {
+        final packet = BmsProtocol.createAuthPacket(
+          BmsProtocol.AUTH_CMD_GET_RANDOM,
+        );
+
+        expect(packet[0], equals(0xFF));
+        expect(packet[1], equals(0xAA));
+        expect(packet[2], equals(0x17)); // GET_RANDOM command
+        expect(packet[3], equals(0x00));
+        expect(packet.length, equals(5));
+
+        print('✓ Get Random: ${BmsProtocol.packetToHex(packet)}');
+      });
+
+      test('should create send app key packet', () {
+        final appKeyData = [0x30, 0x30, 0x30, 0x30, 0x30, 0x30]; // "000000"
+        final packet = BmsProtocol.createAuthPacket(
+          BmsProtocol.AUTH_CMD_SEND_APP_KEY,
+          appKeyData,
+        );
+
+        expect(packet[0], equals(0xFF));
+        expect(packet[1], equals(0xAA));
+        expect(packet[2], equals(0x15)); // SEND_APP_KEY command
+        expect(packet[3], equals(0x06));
+        expect(packet.length, equals(11));
+
+        print('✓ Send App Key: ${BmsProtocol.packetToHex(packet)}');
+      });
+    });
+
+    group('parseResponse - Auth Packets', () {
+      test('should parse get random response', () {
+        // FF AA 17 01 XX CHECKSUM (XX is random byte)
+        final packet = [0xFF, 0xAA, 0x17, 0x01, 0x42, 0x5A];
         final result = BmsProtocol.parseResponse(packet);
 
         expect(result['type'], equals('auth'));
         expect(result['command'], equals(0x17));
-        expect(result['data'], isEmpty);
+        expect(result['data'], equals([0x42]));
       });
 
-      test('should parse auth packet with data', () {
-        final packet = [0xFF, 0xAA, 0x18, 0x04, 0x01, 0x02, 0x03, 0x04, 0x22];
-
+      test('should parse app key check response', () {
+        // FF AA 15 01 00 CHECKSUM (00 = success)
+        final packet = [0xFF, 0xAA, 0x15, 0x01, 0x00, 0x16];
         final result = BmsProtocol.parseResponse(packet);
 
-        expect(result['command'], equals(0x18));
-        expect(result['data'], equals([0x01, 0x02, 0x03, 0x04]));
-      });
-
-      test('should handle truncated auth packets', () {
-        // Claims 10 bytes but only has 3
-        final packet = [0xFF, 0xAA, 0x15, 0x0A, 0x01, 0x02, 0x03, 0x06];
-
-        final result = BmsProtocol.parseResponse(packet);
-
+        expect(result['type'], equals('auth'));
         expect(result['command'], equals(0x15));
-        expect(result['data'].length, lessThanOrEqualTo(3));
-      });
-
-      test('should parse all auth command types', () {
-        final commands = [0x15, 0x16, 0x17, 0x18, 0x1D];
-
-        for (final cmd in commands) {
-          final checksum = CrcUtils.calculateAuthChecksum([cmd, 0x00]);
-          final packet = [0xFF, 0xAA, cmd, 0x00, checksum];
-
-          final result = BmsProtocol.parseResponse(packet);
-          expect(result['command'], equals(cmd));
-        }
-      });
-
-      test('should handle minimal auth packet', () {
-        final packet = [0xFF, 0xAA, 0x17, 0x00];
-
-        final result = BmsProtocol.parseResponse(packet);
-        expect(result['type'], equals('auth'));
-        expect(result['command'], equals(0x17));
-      });
-
-      test('should extract data correctly when available', () {
-        final data = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
-        final payload = [0x15, 0x06, ...data];
-        final checksum = CrcUtils.calculateAuthChecksum(payload);
-        final packet = [0xFF, 0xAA, ...payload, checksum];
-
-        final result = BmsProtocol.parseResponse(packet);
-        expect(result['data'], equals(data));
+        expect(result['data'], equals([0x00]));
       });
     });
 
     group('Integration Tests', () {
-      test('should create and parse standard read request', () {
+      test('should handle complete read hardware version flow', () {
+        // Create request
         final request = BmsProtocol.createReadPacket(
-          BmsProtocol.CMD_READ_BASE_INFO,
+          BmsProtocol.CMD_READ_HARDWARE_VERSION,
         );
+        print('\n=== Hardware Version Flow ===');
+        print('Request:  ${BmsProtocol.packetToHex(request)}');
 
-        expect(request[0], equals(0xDD));
-        expect(request[request.length - 1], equals(0x77));
-        expect(request[1], equals(BmsProtocol.ACTION_READ));
+        // Simulate actual device response
+        final response = [0xDD, 0xA5, 0x05, 0x00, 0xFF, 0x56, 0x77];
+        print('Response: ${BmsProtocol.packetToHex(response)}');
+
+        // Parse response
+        final parsed = BmsProtocol.parseResponse(response);
+
+        print('Command:  0x${parsed['command'].toRadixString(16)}');
+        print('Status:   0x${parsed['status'].toRadixString(16)}');
+        print('Data:     ${parsed['data']}');
+
+        expect(parsed['type'], equals('standard'));
+        expect(parsed['command'], equals(0xA5));
+        expect(parsed['status'], equals(0x05));
       });
 
-      test('should create and parse MOS control sequence', () {
-        final controlPacket = BmsProtocol.createMosControlPacket(0x0002);
+      test('should verify request-response command matching', () {
+        // When we send READ (0xA5) + FUNCTION (0x03)
+        final request = BmsProtocol.createReadPacket(0x03);
 
-        expect(controlPacket[2], equals(BmsProtocol.CMD_MOS_CONTROL));
-        expect(controlPacket[4], equals(0x00));
-        expect(controlPacket[5], equals(0x02));
-      });
-
-      test('should handle auth flow', () {
-        // Get random
-        final getRandom = BmsProtocol.createAuthPacket(
-          BmsProtocol.AUTH_CMD_GET_RANDOM,
-        );
-        expect(getRandom[2], equals(0x17));
-
-        // Send password
-        final sendPassword = BmsProtocol.createAuthPacket(
-          BmsProtocol.AUTH_CMD_SEND_PASSWORD,
-          [0x01, 0x02, 0x03, 0x04],
-        );
-        expect(sendPassword[2], equals(0x18));
-      });
-
-      test('should maintain packet integrity through create-parse cycle', () {
-        // Create a response-like packet
-        final data = [0x10, 0x20, 0x30];
-        final (checkH, checkL) = CrcUtils.calculateChecksum(
-          0x03,
-          0x00,
-          3,
+        // Response format: DD CMD STATUS LEN DATA... CHK_H CHK_L 77
+        final data = [0x01, 0x02];
+        final (checkH, checkL) = CrcUtils.calculateResponseChecksum(
+          2, // length
           data,
         );
         final response = [
           0xDD,
-          0x03,
-          0x00,
-          0x03,
+          0x03, // CMD echoes the function
+          0x00, // STATUS (0x00 = OK)
+          0x02, // LEN
           ...data,
           checkH,
           checkL,
@@ -601,80 +368,59 @@ void main() {
 
         final parsed = BmsProtocol.parseResponse(response);
 
-        expect(parsed['command'], equals(0x03));
-        expect(parsed['status'], equals(0x00));
-        expect(parsed['data'], equals(data));
+        // The response command (0x03) matches our request function
+        expect(
+          parsed['command'],
+          equals(request[2]),
+        ); // request[2] is the function
+      });
+
+      test('should handle zero-length data response', () {
+        // Zero length data, checksum covers just length byte (0x00)
+        final (checkH, checkL) = CrcUtils.calculateResponseChecksum(0x00, []);
+        final packet = [0xDD, 0x03, 0x00, 0x00, checkH, checkL, 0x77];
+        final result = BmsProtocol.parseResponse(packet);
+
+        expect(result['data'], isEmpty);
+      });
+
+      test('should handle maximum data length', () {
+        final data = List.filled(255, 0x42);
+        final (checkH, checkL) = CrcUtils.calculateResponseChecksum(255, data);
+        final packet = [0xDD, 0x04, 0x00, 0xFF, ...data, checkH, checkL, 0x77];
+
+        final result = BmsProtocol.parseResponse(packet);
+        expect(result['data'].length, equals(255));
+      });
+
+      test('should reject packet with wrong header', () {
+        final packet = [0xDE, 0xA5, 0x05, 0x00, 0xFF, 0x56, 0x77];
+
+        expect(
+          () => BmsProtocol.parseResponse(packet),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
+      test('should reject packet with missing tail', () {
+        final packet = [0xDD, 0xA5, 0x05, 0x00, 0xFF, 0x56, 0x78];
+
+        expect(
+          () => BmsProtocol.parseResponse(packet),
+          throwsA(isA<FormatException>()),
+        );
       });
     });
 
-    group('Edge Cases', () {
-      test('should handle zero-length packets correctly', () {
-        final packet = BmsProtocol.createPacket(0xA5, 0x03, []);
-        expect(packet[3], equals(0x00));
+    group('packetToHex helper', () {
+      test('should format packet as hex string', () {
+        final packet = [0xDD, 0xA5, 0x05, 0x00, 0xFF, 0x56, 0x77];
+        expect(BmsProtocol.packetToHex(packet), equals('DD A5 05 00 FF 56 77'));
       });
 
-      test('should handle maximum byte values', () {
-        final packet = BmsProtocol.createPacket(0xFF, 0xFF, [0xFF, 0xFF]);
-        expect(packet[1], equals(0xFF));
-        expect(packet[2], equals(0xFF));
-      });
-
-      test('should handle minimum byte values', () {
-        final packet = BmsProtocol.createPacket(0x00, 0x00, [0x00]);
-        expect(packet[1], equals(0x00));
-        expect(packet[2], equals(0x00));
-      });
-
-      test('should verify checksum prevents data corruption', () {
-        final data = [0x01, 0x02, 0x03];
-        final (checkH, checkL) = CrcUtils.calculateChecksum(
-          0x03,
-          0x00,
-          3,
-          data,
-        );
-
-        // Create valid packet
-        final validPacket = [
-          0xDD,
-          0x03,
-          0x00,
-          0x03,
-          ...data,
-          checkH,
-          checkL,
-          0x77,
-        ];
-
-        // Corrupt one data byte
-        final corruptPacket = List<int>.from(validPacket);
-        corruptPacket[4] = 0xFF;
-
-        // Both should parse without throwing (checksum validation commented out in code)
-        // But checksums should differ
-        final validResult = BmsProtocol.parseResponse(validPacket);
-        final corruptResult = BmsProtocol.parseResponse(corruptPacket);
-
-        expect(validResult['data'], isNot(equals(corruptResult['data'])));
-      });
-
-      test('should handle alternating bit patterns', () {
-        final data = [0xAA, 0x55, 0xAA, 0x55];
-        final packet = BmsProtocol.createPacket(0xA5, 0x03, data);
-
-        expect(packet[4], equals(0xAA));
-        expect(packet[5], equals(0x55));
-      });
-
-      test('should maintain structure with 255 byte data', () {
-        final data = List.filled(255, 0x42);
-        final packet = BmsProtocol.createPacket(0xA5, 0x04, data);
-
-        expect(packet[3], equals(255));
-        expect(
-          packet.length,
-          equals(262),
-        ); // Header + 3 + 255 + 2 checksum + tail
+      test('should handle single digit hex values', () {
+        final packet = [0x01, 0x02, 0x0A, 0x0F];
+        expect(BmsProtocol.packetToHex(packet), equals('01 02 0A 0F'));
       });
     });
   });

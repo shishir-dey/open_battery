@@ -731,23 +731,39 @@ Client                                    BMS Device
 
         <h3>Checksum Algorithm</h3>
         <pre>
-def calculate_checksum(action: int, function: int, length: int, data: bytes) -> tuple[int, int]:
+def calculate_request_checksum(function: int, length: int, data: bytes) -> tuple[int, int]:
     """
-    Calculate 16-bit checksum
+    Calculate 16-bit checksum for REQUEST packets
+    Per protocol spec: 0x10000 - sum(function + length + data)
     Returns: (high_byte, low_byte)
     """
-    checksum = action + function + length
+    checksum = function + length
     for byte in data:
         checksum += byte
     
-    # Apply modulo and split into bytes
-    checksum = ~checksum + 1
-    checksum = checksum & 0xFFFF
+    # Protocol formula: 0x10000 - sum
+    checksum = (0x10000 - checksum) & 0xFFFF
     high_byte = (checksum >> 8) & 0xFF
     low_byte = checksum & 0xFF
     
     return (high_byte, low_byte)
-</pre>
+
+def calculate_response_checksum(length: int, data: bytes) -> tuple[int, int]:
+    """
+    Calculate 16-bit checksum for validating RESPONSE packets
+    Checksum covers: length + data bytes only
+    """
+    checksum = length
+    for byte in data:
+        checksum += byte
+    
+    checksum = (0x10000 - checksum) & 0xFFFF
+    return ((checksum >> 8) & 0xFF, checksum & 0xFF)
+
+# Example: Read Base Info request
+# Function=0x03, Length=0x00, Data=[]
+# Checksum = 0x10000 - 0x03 = 0xFFFD
+# Packet: DD A5 03 00 FF FD 77</pre>
 
         <h3>Authentication Checksum</h3>
         <pre>
@@ -767,12 +783,10 @@ def calculate_auth_checksum(payload: bytes) -> int:
 
         <div class="mermaid">
             stateDiagram-v2
-                [*] --> STATIC
+            [*] --> STATIC
 
-                STATIC --> PRE_CHARGE: "Current > 0"
-                STATIC --> PRE_DISCHARGE: "Current < 0"
-                
-                PRE_CHARGE --> CHARGE: "Sustained current"
+            STATIC --> PRE_CHARGE: "Current > 0"
+            STATIC --> PRE_DISCHARGE: "Current < 0" PRE_CHARGE --> CHARGE: "Sustained current"
                 CHARGE --> BEFORE_CHG_STOP: "Voltage peak detected"
                 BEFORE_CHG_STOP --> AFTER_CHARGE: "Current stops"
                 AFTER_CHARGE --> STATIC: "Stabilized"
