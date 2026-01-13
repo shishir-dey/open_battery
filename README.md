@@ -1,5 +1,11 @@
 # Open Battery (Generic Chinese BMS Companion App)
 
+## Screenshots
+
+### iOS
+
+<img src="assets/ios/scan_screen.png" width="200"> <img src="assets/ios/dashboard_screen.png" width="200"> <img src="assets/ios/cells_screen.png" width="200">
+
 ## Setup and Build
 
 ### Prerequisites
