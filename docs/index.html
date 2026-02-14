@@ -5,19 +5,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generic Chinese BMS BLE Protocol</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
 
     <!-- SEO and Metadata -->
     <meta name="author" content="Shishir Dey">
     <meta name="description"
-        content="Comprehensive specification for the binary Master-Slave BLE protocol used by Chinese BMS vendors like Jiabaida (JBD), Xiaoxiang, Daly, and JK BMS.">
+        content="Comprehensive specification for the binary Master-Slave BLE protocol used by Jiabaida (JBD) BMS.">
     <meta name="keywords"
-        content="BMS, Bluetooth Low Energy, Protocol, Specification, Jiabaida BMS, JBD, Xiaoxiang, Daly BMS, JK BMS, ANT BMS, Chinese BMS, Open Source, Shishir Dey">
+        content="BMS, Bluetooth Low Energy, Protocol, Specification, Jiabaida BMS, JBD, Xiaoxiang, Daly BMS, JK BMS, ANT BMS, Chinese BMS, Open Source, Shishir Dey, Gotion High-Tech Co., Ltd., EVE Energy Co., Ltd., Seplos, Lohum, Highstar, Shenzhen Tuodatong Electronics Co., Ltd. (TDT), DALY Electronics, Ganfeng Lithium Co. Ltd., SVOLT Energy Technology Co., Ltd.">
 
     <!-- Open Graph -->
     <meta property="og:title" content="BMS Bluetooth Low Energy Protocol Specification">
     <meta property="og:description" content="Technical documentation for the BMS BLE binary protocol.">
     <meta property="og:type" content="article">
     <meta property="article:author" content="Shishir Dey">
+    <meta name="theme-color" id="theme-color-meta" content="#f0ece4">
+    <script>
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
+    </script>
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -29,54 +36,60 @@
         "@type": "Person",
         "name": "Shishir Dey"
       },
-      "description": "Comprehensive specification for the binary Master-Slave BLE protocol used by Chinese BMS vendors including Jiabaida (JBD).",
-      "keywords": "BMS, BLE, Protocol, Jiabaida BMS, JBD, Xiaoxiang, Daly, JK BMS"
+      "description": "Comprehensive specification for the binary Master-Slave BLE protocol used by Jiabaida (JBD) BMS.",
+      "keywords": "BMS, BLE, Protocol, Jiabaida BMS, JBD, Xiaoxiang, Daly, JK BMS, Gotion High-Tech Co., Ltd., EVE Energy Co., Ltd., Seplos, Lohum, Highstar, Shenzhen Tuodatong Electronics Co., Ltd. (TDT), DALY Electronics, Ganfeng Lithium Co. Ltd., SVOLT Energy Technology Co., Ltd."
     }
     </script>
     <style>
         :root {
-            /* Default Dark Mode */
-            --glass-bg: rgba(30, 30, 40, 0.4);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --glass-highlight: rgba(255, 255, 255, 0.05);
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0b0;
-            --accent: #2997ff;
-            /* iOS Blue */
-            --accent-glow: rgba(41, 151, 255, 0.3);
-            --success: #30d158;
-            --warning: #ffd60a;
-            --code-bg: rgba(0, 0, 0, 0.3);
-            --bg-base: #000;
+            --glass-bg: #f5f3ef;
+            --glass-border: #d8d4cd;
+            --glass-highlight: #ece8e0;
+            --text-primary: #2f3437;
+            --text-secondary: #5f666d;
+            --accent: #2b5fb8;
+            --accent-glow: rgba(43, 95, 184, 0.18);
+            --success: #1f7a52;
+            --warning: #b07a1d;
+            --code-bg: #ece8e0;
+            --bg-base: #f0ece4;
+            --surface-shadow: 0 12px 36px rgba(48, 45, 41, 0.08);
         }
 
-        [data-theme="light"] {
-            --glass-bg: rgba(255, 255, 255, 0.65);
-            --glass-border: rgba(0, 0, 0, 0.1);
-            --glass-highlight: rgba(255, 255, 255, 0.4);
-            --text-primary: #1d1d1f;
-            --text-secondary: #515154;
-            --accent: #0071e3;
-            --accent-glow: rgba(0, 113, 227, 0.2);
-            --code-bg: rgba(245, 245, 247, 0.8);
-            --bg-base: #f5f5f7;
-            --success: #34c759;
-            --warning: #ffcc00;
+        [data-theme="dark"] {
+            --glass-bg: #26221d;
+            --glass-border: #3a342e;
+            --glass-highlight: #312c26;
+            --text-primary: #f0ebe3;
+            --text-secondary: #cbc2b5;
+            --accent: #8ab4ff;
+            --accent-glow: rgba(138, 180, 255, 0.2);
+            --code-bg: #1f1b17;
+            --bg-base: #161311;
+            --success: #7ecfa9;
+            --warning: #d2a558;
+            --surface-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+        }
+
+        html {
+            background-color: var(--bg-base);
+            transition: background-color 0.3s ease;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: "Public Sans", "Avenir Next", "Segoe UI", sans-serif;
             background-color: var(--bg-base);
             color: var(--text-primary);
             margin: 0;
             padding: 0;
-            line-height: 1.6;
+            line-height: 1.55;
+            font-size: 15.5px;
+            letter-spacing: -0.004em;
             -webkit-font-smoothing: antialiased;
             min-height: 100vh;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* Abstract futuristic background */
         body::before {
             content: "";
             position: fixed;
@@ -85,98 +98,141 @@
             right: 0;
             bottom: 0;
             background-image:
-                radial-gradient(circle at 10% 20%, rgba(41, 151, 255, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(255, 45, 85, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 50% 50%, rgba(94, 92, 230, 0.1) 0%, transparent 60%);
+                radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.4) 0%, transparent 42%),
+                radial-gradient(circle at 84% 80%, rgba(229, 223, 210, 0.55) 0%, transparent 38%),
+                repeating-linear-gradient(120deg, rgba(59, 53, 46, 0.03) 0, rgba(59, 53, 46, 0.03) 1px, transparent 1px, transparent 6px);
             z-index: -1;
-            transition: opacity 0.3s ease;
         }
 
-        [data-theme="light"] body::before {
+        [data-theme="dark"] body::before {
             background-image:
-                radial-gradient(circle at 10% 20%, rgba(0, 113, 227, 0.1) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(255, 59, 48, 0.1) 0%, transparent 40%);
+                radial-gradient(circle at 12% 18%, rgba(66, 61, 55, 0.36) 0%, transparent 42%),
+                radial-gradient(circle at 84% 80%, rgba(50, 44, 39, 0.5) 0%, transparent 38%),
+                repeating-linear-gradient(120deg, rgba(235, 225, 210, 0.03) 0, rgba(235, 225, 210, 0.03) 1px, transparent 1px, transparent 6px);
         }
 
-        /* Glass Container */
         .glass-container {
             position: relative;
-            max-width: 900px;
-            margin: 60px auto;
-            padding: 50px;
+            max-width: 920px;
+            margin: 48px auto;
+            padding: 44px;
             background: var(--glass-bg);
-            backdrop-filter: blur(25px) saturate(180%);
-            -webkit-backdrop-filter: blur(25px) saturate(180%);
-            border-radius: 30px;
+            border-radius: 22px;
             border: 1px solid var(--glass-border);
-            box-shadow:
-                0 20px 40px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 var(--glass-highlight);
+            box-shadow: var(--surface-shadow);
             transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
-        /* Typography */
         h1,
         h2,
         h3,
         h4 {
             color: var(--text-primary);
-            font-weight: 600;
-            letter-spacing: -0.01em;
+            font-weight: 700;
+            letter-spacing: -0.015em;
         }
 
         h1 {
-            font-size: 3rem;
-            margin-bottom: 0.2em;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            /* text-shadow: 0 10px 30px rgba(255, 255, 255, 0.1); */
+            font-size: 2.45rem;
+            line-height: 1.2;
+            margin-bottom: 0.35em;
+        }
+
+        .version-chip {
+            font-size: 0.4em;
+            vertical-align: middle;
+            color: var(--text-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 4px 8px;
+            margin-left: 10px;
+            font-weight: 600;
+        }
+
+        .vendor-selector {
+            margin: 0 0 18px;
+            width: min(360px, 100%);
+            position: relative;
+        }
+
+        .vendor-selector::after {
+            content: "▾";
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            pointer-events: none;
+        }
+
+        .vendor-selector select {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+            font-family: "Public Sans", "Avenir Next", "Segoe UI", sans-serif;
+            font-size: 0.96rem;
+            color: var(--text-primary);
+            background: var(--glass-highlight);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 11px 40px 11px 14px;
+            outline: none;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        }
+
+        .vendor-selector select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        }
+
+        .vendor-content[hidden] {
+            display: none;
         }
 
         h2 {
-            font-size: 2rem;
-            margin-top: 2em;
-            margin-bottom: 1em;
+            font-size: 1.68rem;
+            margin-top: 1.8em;
+            margin-bottom: 0.95em;
             border-bottom: 1px solid var(--glass-border);
             padding-bottom: 0.5em;
-            color: var(--accent);
+            color: var(--text-primary);
         }
 
         h3 {
-            font-size: 1.4rem;
-            margin-top: 1.5em;
+            font-size: 1.24rem;
+            margin-top: 1.35em;
             color: var(--text-primary);
-            opacity: 0.9;
+            opacity: 0.93;
         }
 
         p,
         li {
             color: var(--text-secondary);
-            font-size: 1.05rem;
+            font-size: 0.99rem;
         }
 
         strong {
             color: var(--text-primary);
         }
 
-        /* Links */
         a {
             color: var(--accent);
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: color 0.2s ease;
         }
 
         a:hover {
             color: var(--accent);
-            text-decoration: none;
-            text-shadow: 0 0 15px var(--accent-glow);
+            text-decoration: underline;
         }
 
-        /* Tables - Glass Style */
+        /* Tables */
         .table-wrapper {
             overflow-x: auto;
-            border-radius: 16px;
+            border-radius: 14px;
             margin: 20px 0;
             border: 1px solid var(--glass-border);
         }
@@ -189,23 +245,23 @@
 
         th,
         td {
-            padding: 16px;
+            padding: 14px;
             text-align: left;
             border-bottom: 1px solid var(--glass-border);
             color: var(--text-secondary);
         }
 
         th {
-            background: rgba(41, 151, 255, 0.05);
-            color: var(--accent);
-            font-weight: 600;
+            background: #e4dfd5;
+            color: var(--text-primary);
+            font-weight: 700;
             text-transform: uppercase;
             font-size: 0.85rem;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.045em;
         }
 
-        [data-theme="light"] th {
-            background: rgba(0, 113, 227, 0.05);
+        [data-theme="dark"] th {
+            background: #322c25;
         }
 
         tr:last-child td {
@@ -213,29 +269,29 @@
         }
 
         tr:hover td {
-            background: var(--glass-highlight);
+            background: rgba(127, 116, 103, 0.12);
         }
 
         /* Code Blocks */
         pre {
             background: var(--code-bg);
-            padding: 24px;
-            border-radius: 18px;
+            padding: 20px;
+            border-radius: 12px;
             overflow-x: auto;
             border: 1px solid var(--glass-border);
-            font-family: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
-            font-size: 0.9rem;
+            font-family: "JetBrains Mono", "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+            font-size: 0.86rem;
             color: var(--text-primary);
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         code {
-            font-family: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+            font-family: "JetBrains Mono", "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
             background: var(--glass-highlight);
             padding: 3px 6px;
             border-radius: 6px;
             font-size: 0.9em;
-            color: var(--accent);
+            color: var(--text-primary);
         }
 
         pre code {
@@ -246,17 +302,17 @@
 
         /* Mermaid Diagrams */
         .mermaid {
-            background: rgba(255, 255, 255, 0.8);
+            background: var(--glass-highlight);
             padding: 20px;
-            border-radius: 16px;
+            border-radius: 12px;
             margin: 30px 0;
             overflow-x: auto;
             text-align: center;
+            border: 1px solid var(--glass-border);
         }
 
-        [data-theme="light"] .mermaid {
-            background: rgba(255, 255, 255, 0.5);
-            border: 1px solid var(--glass-border);
+        [data-theme="dark"] .mermaid {
+            background: #2e2924;
         }
 
         /* Scrollbar */
@@ -281,41 +337,39 @@
         /* Top Controls */
         .top-controls {
             position: absolute;
-            top: 30px;
-            right: 30px;
+            top: 24px;
+            right: 24px;
             z-index: 100;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .theme-switch-wrapper {
             display: flex;
             align-items: center;
-            background: var(--glass-bg);
-            padding: 8px 12px;
-            border-radius: 50px;
+            background: var(--glass-highlight);
+            padding: 6px 8px;
+            border-radius: 10px;
             border: 1px solid var(--glass-border);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
         }
 
         .github-link-wrapper {
             display: flex;
             align-items: center;
-            background: var(--glass-bg);
-            padding: 8px 12px;
-            border-radius: 50px;
+            background: var(--glass-highlight);
+            padding: 6px 8px;
+            border-radius: 10px;
             border: 1px solid var(--glass-border);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
         }
 
         .theme-switch {
             display: inline-block;
-            height: 24px;
+            height: 28px;
             position: relative;
-            width: 44px;
+            width: 52px;
         }
 
         .theme-switch input {
@@ -323,41 +377,73 @@
         }
 
         .slider {
-            background-color: #3a3a3c;
+            background-color: rgba(108, 99, 90, 0.22);
             bottom: 0;
             cursor: pointer;
             left: 0;
             position: absolute;
             right: 0;
             top: 0;
-            transition: .4s;
-            border-radius: 34px;
+            transition: 0.3s;
+            border-radius: 9px;
+            border: 1px solid var(--glass-border);
         }
 
         .slider:before {
-            background-color: #fff;
+            background-color: var(--glass-bg);
             bottom: 2px;
             content: "";
-            height: 20px;
+            height: 22px;
             left: 2px;
             position: absolute;
-            transition: .4s;
-            width: 20px;
-            border-radius: 50%;
+            transition: 0.3s;
+            width: 22px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
         }
 
         input:checked+.slider {
-            background-color: var(--accent);
+            background-color: var(--accent-glow);
+            border-color: var(--accent);
         }
 
         input:checked+.slider:before {
-            transform: translateX(20px);
+            transform: translateX(24px);
+        }
+
+        .theme-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0;
+            margin: 0 6px;
+            color: var(--text-secondary);
+            line-height: 1;
         }
 
         .icon {
-            font-size: 16px;
-            margin: 0 8px;
+            font-size: 15px;
+            margin: 0;
             color: var(--text-secondary);
+        }
+
+        .github-link-wrapper .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .github-link-wrapper .icon:hover {
+            background: rgba(108, 99, 90, 0.16);
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .github-link-wrapper .icon:hover {
+            background: rgba(240, 235, 227, 0.12);
         }
 
         /* Utilities */
@@ -371,17 +457,79 @@
             color: white;
             margin-right: 8px;
         }
+
+        @media (max-width: 900px) {
+            .glass-container {
+                margin: 30px 18px;
+                padding: 32px 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .glass-container {
+                margin: 18px 12px;
+                padding: 22px 16px 24px;
+                border-radius: 16px;
+            }
+
+            .top-controls {
+                position: static;
+                justify-content: flex-end;
+                margin-bottom: 14px;
+            }
+
+            h1 {
+                font-size: 1.86rem;
+                line-height: 1.24;
+                margin-bottom: 0.3em;
+            }
+
+            .version-chip {
+                display: inline-block;
+                margin-top: 8px;
+                margin-left: 0;
+                font-size: 0.46em;
+            }
+
+            .vendor-selector {
+                margin-bottom: 14px;
+                width: 100%;
+            }
+
+            h2 {
+                font-size: 1.36rem;
+            }
+
+            h3 {
+                font-size: 1.08rem;
+            }
+
+            p,
+            li {
+                font-size: 0.94rem;
+            }
+
+            th,
+            td {
+                padding: 11px;
+                font-size: 0.89rem;
+            }
+
+            pre {
+                padding: 14px;
+                font-size: 0.8rem;
+            }
+        }
     </style>
     <!-- Mermaid Diagram Support -->
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
 
-        // Initialize based on theme
-        const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'default' : 'dark';
+        const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default';
         mermaid.initialize({
             startOnLoad: true,
             theme: theme,
-            themeVariables: { fontFamily: 'SF Pro Display' }
+            themeVariables: { fontFamily: 'Public Sans' }
         });
     </script>
 </head>
@@ -391,12 +539,12 @@
     <div class="glass-container">
         <div class="top-controls">
             <div class="theme-switch-wrapper">
-                <span class="icon">🌙</span>
+                <span class="theme-label">🌙</span>
                 <label class="theme-switch" for="checkbox">
                     <input type="checkbox" id="checkbox" />
                     <div class="slider round"></div>
                 </label>
-                <span class="icon">☀️</span>
+                <span class="theme-label">☀️</span>
             </div>
             <div class="github-link-wrapper">
                 <a href="https://github.com/shishir-dey/open_battery" target="_blank" class="icon" title="GitHub Repository">
@@ -407,15 +555,16 @@
             </div>
         </div>
 
-        <h1>Generic Chinese BMS BLE Protocol<span
-                style="font-size: 0.4em; vertical-align: middle; opacity: 0.5; border:1px solid var(--glass-border); border-radius: 8px; padding: 4px 8px; margin-left: 10px; -webkit-text-fill-color: var(--text-secondary);">v1.0</span>
+        <h1>Generic Chinese BMS BLE Protocol<span class="version-chip">v1.0</span>
         </h1>
 
-        <p>
-            <strong>Protocol Type:</strong> Binary, Master-Slave<br>
-            <strong>Transport:</strong> Bluetooth Low Energy (BLE)
-        </p>
+        <div class="vendor-selector">
+            <select id="vendor-selector" aria-label="BMS vendor selector">
+                <option value="jbd" selected>Jiabaida (JBD) BMS</option>
+            </select>
+        </div>
 
+        <div class="vendor-content" data-vendor="jbd">
         <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 30px 0;">
 
         <h2>Table of Contents</h2>
@@ -903,19 +1052,42 @@ class BMSProtocol:
             'capacity': capacity,
             'temperatures': temperatures
         }</pre>
+        </div>
 
     </div>
 
     <script>
         const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
-        const currentTheme = localStorage.getItem('theme');
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        toggleSwitch.checked = currentTheme === 'light';
+        const themeColorMeta = document.getElementById('theme-color-meta');
+        const vendorSelector = document.getElementById('vendor-selector');
+        const vendorContentBlocks = document.querySelectorAll('.vendor-content');
 
-        if (currentTheme) {
-            document.documentElement.setAttribute('data-theme', currentTheme);
-            if (currentTheme === 'light') {
-                toggleSwitch.checked = true;
+        function syncThemeColor() {
+            if (!themeColorMeta) {
+                return;
+            }
+            const topBarColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-base').trim();
+            if (topBarColor) {
+                themeColorMeta.setAttribute('content', topBarColor);
             }
         }
+
+        function switchVendorContent(vendor) {
+            vendorContentBlocks.forEach((block) => {
+                block.hidden = block.dataset.vendor !== vendor;
+            });
+        }
+
+        if (vendorSelector) {
+            // Prepared for future protocol additions (e.g., daly, jk, etc.).
+            switchVendorContent(vendorSelector.value);
+            vendorSelector.addEventListener('change', (event) => {
+                switchVendorContent(event.target.value);
+            });
+        }
+        syncThemeColor();
 
         function switchTheme(e) {
             if (e.target.checked) {
@@ -925,6 +1097,7 @@ class BMSProtocol:
                 document.documentElement.setAttribute('data-theme', 'dark');
                 localStorage.setItem('theme', 'dark');
             }
+            syncThemeColor();
         }
 
         toggleSwitch.addEventListener('change', switchTheme, false);
