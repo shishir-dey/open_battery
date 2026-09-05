@@ -135,36 +135,6 @@ class BmsProvider extends ChangeNotifier {
     _pollingTimer = null;
   }
 
-  // Handle incoming data (shared by notify and manual read)
-  void _handleResponse(List<int> data) {
-    if (data.isEmpty) return;
-    // DEBUG: Print raw bits
-    final hex = data
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join(' ')
-        .toUpperCase();
-    debugPrint("RX RAW: $hex");
-
-    try {
-      if (data.isNotEmpty && data[0] == 0xDD) {
-        final packet = BmsProtocol.parseResponse(data);
-        final cmd = packet['command'];
-        final payload = packet['data'] as List<int>;
-
-        if (cmd == BmsProtocol.CMD_READ_BASE_INFO) {
-          _baseInfo = BmsBaseInfo.fromBytes(payload);
-        } else if (cmd == BmsProtocol.CMD_READ_CELL_VOLTAGES) {
-          _cellVoltages = BmsCellVoltages.fromBytes(payload);
-        } else if (cmd == BmsProtocol.CMD_READ_HARDWARE_VERSION) {
-          _hardwareVersion = BmsHardwareVersion.fromBytes(payload);
-        }
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint("Parse error: $e");
-    }
-  }
-
   Future<void> _requestInitialData() async {
     debugPrint("Provider: Requesting initial data...");
     try {

@@ -36,8 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_blue_plus: ^2.1.0
   provider: ^6.1.5+1
-  google_fonts: ^7.0.0
-  permission_handler: ^12.0.1
+  google_fonts: ^8.2.1
+  permission_handler: ^13.0.2
 
 dev_dependencies:
   flutter_test:
