@@ -9,7 +9,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import '../protocol/bms_protocol.dart';
 
 enum AuthState { notAuthenticated, authenticated }
 
@@ -24,12 +23,9 @@ class BleService {
   StreamSubscription? _notificationSubscription;
 
   // Packet assembly buffer for handling fragmented BLE notifications
-  List<int> _frameBuffer = [];
+  final List<int> _frameBuffer = [];
   int _expectedLength = 0;
   static const int _maxBufferSize = 100;
-
-  // Auth State
-  AuthState _authState = AuthState.notAuthenticated;
 
   // UUIDs
   final String serviceUuid = "0000ff00-0000-1000-8000-00805f9b34fb";
@@ -77,10 +73,10 @@ class BleService {
 
   Future<void> connect(BluetoothDevice device) async {
     _connectedDevice = device;
-    _authState = AuthState.notAuthenticated;
+
     _authStatusController.add(false);
 
-    await device.connect(license: License.free, autoConnect: false);
+    await device.connect(license: License.nonprofit, autoConnect: false);
 
     List<BluetoothService> services = await device.discoverServices();
     for (var service in services) {
@@ -115,7 +111,6 @@ class BleService {
 
     // Skip authentication - this BMS doesn't respond to auth packets
     debugPrint("⚠️  Skipping authentication - BMS accepts direct commands");
-    _authState = AuthState.authenticated;
 
     // Small delay to ensure provider is subscribed
     await Future.delayed(const Duration(milliseconds: 300));
@@ -130,7 +125,7 @@ class BleService {
     _connectedDevice = null;
     _rxCharacteristic = null;
     _txCharacteristic = null;
-    _authState = AuthState.notAuthenticated;
+
     _resetBuffer();
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_battery/protocol/bms_protocol.dart';
 import 'package:open_battery/protocol/crc_utils.dart';
@@ -135,7 +136,7 @@ void main() {
         expect(result['status'], equals(0x05)); // Hardware version command
         expect(result['data'], isEmpty);
 
-        print(
+        debugPrint(
           '✓ Parsed response: CMD=0x${result['command'].toRadixString(16)}, STATUS=0x${result['status'].toRadixString(16)}',
         );
       });
@@ -204,7 +205,7 @@ void main() {
             BmsProtocol.packetToHex(packet),
             equals('DD A5 03 00 FF FD 77'),
           );
-          print('✓ Read Base Info: ${BmsProtocol.packetToHex(packet)}');
+          debugPrint('✓ Read Base Info: ${BmsProtocol.packetToHex(packet)}');
         },
       );
 
@@ -220,7 +221,9 @@ void main() {
             BmsProtocol.packetToHex(packet),
             equals('DD A5 04 00 FF FC 77'),
           );
-          print('✓ Read Cell Voltages: ${BmsProtocol.packetToHex(packet)}');
+          debugPrint(
+            '✓ Read Cell Voltages: ${BmsProtocol.packetToHex(packet)}',
+          );
         },
       );
 
@@ -231,7 +234,9 @@ void main() {
 
         // 0x10000 - 0x05 = 0xFFFB
         expect(BmsProtocol.packetToHex(packet), equals('DD A5 05 00 FF FB 77'));
-        print('✓ Read Hardware Version: ${BmsProtocol.packetToHex(packet)}');
+        debugPrint(
+          '✓ Read Hardware Version: ${BmsProtocol.packetToHex(packet)}',
+        );
       });
     });
 
@@ -278,7 +283,7 @@ void main() {
         expect(packet[3], equals(0x00));
         expect(packet.length, equals(5));
 
-        print('✓ Get Random: ${BmsProtocol.packetToHex(packet)}');
+        debugPrint('✓ Get Random: ${BmsProtocol.packetToHex(packet)}');
       });
 
       test('should create send app key packet', () {
@@ -294,7 +299,7 @@ void main() {
         expect(packet[3], equals(0x06));
         expect(packet.length, equals(11));
 
-        print('✓ Send App Key: ${BmsProtocol.packetToHex(packet)}');
+        debugPrint('✓ Send App Key: ${BmsProtocol.packetToHex(packet)}');
       });
     });
 
@@ -326,19 +331,19 @@ void main() {
         final request = BmsProtocol.createReadPacket(
           BmsProtocol.CMD_READ_HARDWARE_VERSION,
         );
-        print('\n=== Hardware Version Flow ===');
-        print('Request:  ${BmsProtocol.packetToHex(request)}');
+        debugPrint('\n=== Hardware Version Flow ===');
+        debugPrint('Request:  ${BmsProtocol.packetToHex(request)}');
 
         // Simulate actual device response
         final response = [0xDD, 0xA5, 0x05, 0x00, 0xFF, 0x56, 0x77];
-        print('Response: ${BmsProtocol.packetToHex(response)}');
+        debugPrint('Response: ${BmsProtocol.packetToHex(response)}');
 
         // Parse response
         final parsed = BmsProtocol.parseResponse(response);
 
-        print('Command:  0x${parsed['command'].toRadixString(16)}');
-        print('Status:   0x${parsed['status'].toRadixString(16)}');
-        print('Data:     ${parsed['data']}');
+        debugPrint('Command:  0x${parsed['command'].toRadixString(16)}');
+        debugPrint('Status:   0x${parsed['status'].toRadixString(16)}');
+        debugPrint('Data:     ${parsed['data']}');
 
         expect(parsed['type'], equals('standard'));
         expect(parsed['command'], equals(0xA5));
